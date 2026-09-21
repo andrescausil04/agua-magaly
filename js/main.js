@@ -380,6 +380,23 @@
         waBtn.removeAttribute('aria-disabled');
 
         const custData = getCustomerData();
+
+        // Campos obligatorios de entrega y contacto: sin ellos no se continúa
+        if (!custData.isValid) {
+          if (emptyMsg) {
+            emptyMsg.style.display = 'block';
+            emptyMsg.textContent = '⚠️ Completa tus datos de entrega y contacto (campos obligatorios) para poder enviar el pedido.';
+          }
+          validateCustomerFields(true);
+          waBtn.href = `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}`;
+          waBtn.onclick = function (e) {
+            e.preventDefault();
+            const card = document.getElementById('customer-data-card');
+            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          };
+          return;
+        }
+
         const summaryItems = [];
         const itemsTextLines = [];
         Object.keys(cart).forEach(id => {
