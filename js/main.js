@@ -452,13 +452,13 @@
     });
   }
 
-  // Scroll suave al carrito desde la barra de navegación
+  // Scroll suave a los datos de entrega del pedido desde la barra de navegación
   const navCartBtn = document.getElementById('nav-cart-btn');
   if (navCartBtn) {
     navCartBtn.addEventListener('click', () => {
-      const productosSection = document.getElementById('productos');
-      if (productosSection) {
-        productosSection.scrollIntoView({ behavior: 'smooth' });
+      const target = document.getElementById('customer-data-card') || document.getElementById('productos');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
       }
     });
   }
