@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración — Agua Magaly</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="icon" type="image/png" href="assets/logo-magaly.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="admin-layout" id="admin-page">
+
+  <!-- BARRA SUPERIOR DEL ADMINISTRADOR -->
+  <nav class="admin-nav">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <a href="index.html" class="brand" title="Ir a la tienda pública">
+        <img src="assets/logo-magaly.png" alt="Logo Agua Magaly" class="logo-mark" width="42" height="42" style="object-fit: contain;">
+        <span>Agua Magaly</span>
+      </a>
+      <span class="badge-role">Panel Oficial</span>
+    </div>
+
+    <div class="admin-user-pill">
+      <span class="badge-ok">● Sesión: <strong>admin</strong></span>
+      <a href="index.html" class="btn btn-ghost btn-sm" style="border-color: rgba(255,255,255,0.4);">
+        Ver Tienda
+      </a>
+      <button type="button" class="btn btn-danger btn-sm" id="logout-btn">
+        Cerrar Sesión
+      </button>
+    </div>
+  </nav>
+
+  <main class="admin-container">
+    <!-- PESTAÑAS DE NAVEGACIÓN INTERNA -->
+    <div class="admin-tabs" role="tablist">
+      <button type="button" class="admin-tab-btn active" data-tab="tab-productos">
+        📦 Productos (CRUD)
+        <span class="tab-badge" id="tab-badge-products">2</span>
+      </button>
+      <button type="button" class="admin-tab-btn" data-tab="tab-pedidos">
+        🛒 Gestión de Pedidos
+        <span class="tab-badge" id="tab-badge-orders">0</span>
+      </button>
+      <button type="button" class="admin-tab-btn" data-tab="tab-rutas">
+        🚚 Rutas de Entrega
+        <span class="tab-badge" id="tab-badge-routes">3</span>
+      </button>
+      <button type="button" class="admin-tab-btn" data-tab="tab-pqrs">
+        📩 Quejas y Sugerencias
+        <span class="tab-badge" id="tab-badge-pqrs">0</span>
+      </button>
+    </div>
+
+    <!-- ====================================================================
+         SECCIÓN 1: CRUD DE PRODUCTOS
+         ==================================================================== -->
+    <section id="tab-productos" class="admin-tab-content">
+      <div class="admin-card-panel">
+        <div class="panel-head">
+          <div>
+            <h3>Catálogo de Productos y Precios</h3>
+            <p style="margin: 0; color: var(--ink-soft); font-size: 13.5px;">
+              Edita precios, nombres, descripciones y disponibilidad. Los cambios se reflejan automáticamente en la tienda pública.
+            </p>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-add-product">
+            + Nuevo Producto
+          </button>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="products-table">
+            <thead>
+              <tr>
+                <th>Imagen</th>
+                <th>Nombre / Producto</th>
+                <th>Presentación</th>
+                <th>Precio Actual</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="products-table-body">
+              <!-- Renderizado dinámicamente con JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 2: GESTIÓN DE PEDIDOS (FINALIZAR / CANCELAR)
+         ==================================================================== -->
+    <section id="tab-pedidos" class="admin-tab-content" style="display: none;">
+      <div class="admin-card-panel">
+        <div class="panel-head">
+          <div>
+            <h3>Control y Despacho de Pedidos</h3>
+            <p style="margin: 0; color: var(--ink-soft); font-size: 13.5px;">
+              Supervisa pedidos en tiempo real. Puedes ponerlos en ruta, finalizarlos al entregar o cancelarlos.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-ghost btn-sm" style="color: var(--blue-deep); border-color: var(--rule);" id="btn-add-order">
+              + Registrar Pedido
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtros rápidos de pedidos -->
+        <div style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-sm order-filter-btn active" data-filter="todos">Todos</button>
+          <button type="button" class="btn btn-sm order-filter-btn" data-filter="Pendiente">Pendientes</button>
+          <button type="button" class="btn btn-sm order-filter-btn" data-filter="En ruta">En Ruta</button>
+          <button type="button" class="btn btn-sm order-filter-btn" data-filter="Finalizado">Finalizados</button>
+          <button type="button" class="btn btn-sm order-filter-btn" data-filter="Cancelado">Cancelados</button>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="orders-table">
+            <thead>
+              <tr>
+                <th>ID Pedido</th>
+                <th>Cliente / Teléfono</th>
+                <th>Detalle del Pedido</th>
+                <th>Total</th>
+                <th>Fecha y Hora</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="orders-table-body">
+              <!-- Renderizado dinámicamente con JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 3: CONTROL DE RUTAS DE ENTREGA
+         ==================================================================== -->
+    <section id="tab-rutas" class="admin-tab-content" style="display: none;">
+      <div class="admin-card-panel">
+        <div class="panel-head">
+          <div>
+            <h3>Zonas y Rutas de Reparto en Bajo Grande</h3>
+            <p style="margin: 0; color: var(--ink-soft); font-size: 13.5px;">
+              Planifica la logística veredal para abastecer hogares, comerciantes y colegios.
+            </p>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-add-route">
+            + Programar Nueva Ruta
+          </button>
+        </div>
+
+        <div class="routes-grid" id="routes-container">
+          <!-- Renderizado dinámicamente con JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 4: BUZÓN DE QUEJAS Y SUGERENCIAS (PQRS)
+         ==================================================================== -->
+    <section id="tab-pqrs" class="admin-tab-content" style="display: none;">
+      <div class="admin-card-panel">
+        <div class="panel-head">
+          <div>
+            <h3>Buzón de Atención al Cliente (PQRS)</h3>
+            <p style="margin: 0; color: var(--ink-soft); font-size: 13.5px;">
+              Revisa quejas, sugerencias y felicitaciones enviadas desde el sitio web.
+            </p>
+          </div>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="pqrs-table">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Remitente</th>
+                <th>Contacto</th>
+                <th>Mensaje</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th style="text-align: right;">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="pqrs-table-body">
+              <!-- Renderizado dinámicamente con JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ====================================================================
+       MODAL: CREAR / EDITAR PRODUCTO
+       ==================================================================== -->
+  <div class="admin-modal-overlay" id="product-modal" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="panel-head" style="margin-bottom: 16px;">
+        <h3 id="product-modal-title">Editar Producto</h3>
+        <button type="button" class="btn-text" id="btn-close-product-modal" style="font-size: 20px;">✕</button>
+      </div>
+
+      <form id="product-form">
+        <input type="hidden" id="prod-id">
+        <div class="admin-form-grid">
+          <div class="admin-form-group full">
+            <label for="prod-name">Nombre del Producto *</label>
+            <input type="text" id="prod-name" placeholder="Ej. Paca de agua 250 ml" required>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="prod-price">Precio Unitario (COP) *</label>
+            <input type="number" id="prod-price" min="500" step="500" placeholder="4000" required>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="prod-unit">Etiqueta de Precio *</label>
+            <input type="text" id="prod-unit" placeholder="Ej. / paca completa o / bolsa de 3L" required>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="prod-badge">Distintivo / Badge</label>
+            <input type="text" id="prod-badge" placeholder="Ej. Venta por Paca">
+          </div>
+
+          <div class="admin-form-group">
+            <label for="prod-status">Estado del Producto</label>
+            <select id="prod-status">
+              <option value="true">Activo / Disponible</option>
+              <option value="false">Agotado / Inactivo</option>
+            </select>
+          </div>
+
+          <div class="admin-form-group full">
+            <label for="prod-desc">Descripción del Producto</label>
+            <textarea id="prod-desc" rows="3" placeholder="Detalles de la presentación..."></textarea>
+          </div>
+
+          <div class="admin-form-group full">
+            <label for="prod-image">Ruta de la Imagen</label>
+            <input type="text" id="prod-image" placeholder="assets/bolsa-250ml.jpg o assets/bolsa-3l.jpg">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-product" style="color: var(--ink-soft); border-color: var(--rule);">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">
+            Guardar Producto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       MODAL: REGISTRAR PEDIDO MANUAL
+       ==================================================================== -->
+  <div class="admin-modal-overlay" id="order-modal" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="panel-head" style="margin-bottom: 16px;">
+        <h3>Registrar Pedido de Cliente</h3>
+        <button type="button" class="btn-text" id="btn-close-order-modal" style="font-size: 20px;">✕</button>
+      </div>
+
+      <form id="manual-order-form">
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="ord-client">Nombre del Cliente *</label>
+            <input type="text" id="ord-client" placeholder="Ej. Tienda Doña Carmen" required>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="ord-phone">Teléfono / WhatsApp *</label>
+            <input type="text" id="ord-phone" placeholder="Ej. 312 456 7890" required>
+          </div>
+
+          <div class="admin-form-group full">
+            <label for="ord-items">Detalle del Pedido *</label>
+            <input type="text" id="ord-items" placeholder="Ej. 3 Pacas 250ml + 2 Bolsas 3L" required>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="ord-total">Total a Cobrar ($ COP) *</label>
+            <input type="number" id="ord-total" min="1000" step="500" placeholder="20000" required>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="ord-status">Estado Inicial</label>
+            <select id="ord-status">
+              <option value="Pendiente">Pendiente</option>
+              <option value="En ruta">En ruta</option>
+              <option value="Finalizado">Finalizado</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-order" style="color: var(--ink-soft); border-color: var(--rule);">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">
+            Crear Pedido
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       MODAL: PROGRAMAR RUTA DE ENTREGA
+       ==================================================================== -->
+  <div class="admin-modal-overlay" id="route-modal" style="display: none;">
+    <div class="admin-modal-card">
+      <div class="panel-head" style="margin-bottom: 16px;">
+        <h3>Programar Ruta de Reparto</h3>
+        <button type="button" class="btn-text" id="btn-close-route-modal" style="font-size: 20px;">✕</button>
+      </div>
+
+      <form id="route-form">
+        <div class="admin-form-grid">
+          <div class="admin-form-group full">
+            <label for="route-name">Nombre de la Zona / Sector *</label>
+            <input type="text" id="route-name" placeholder="Ej. Sector La Loma y El Crucero" required>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="route-driver">Repartidor Responsable *</label>
+            <input type="text" id="route-driver" placeholder="Ej. Carlos Gómez" required>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="route-time">Horario Estimado *</label>
+            <input type="text" id="route-time" placeholder="Ej. 2:00 PM - 5:00 PM" required>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="route-status">Estado de la Ruta</label>
+            <select id="route-status">
+              <option value="Programada">Programada</option>
+              <option value="En ruta">En ruta</option>
+              <option value="Completada">Completada</option>
+            </select>
+          </div>
+
+          <div class="admin-form-group full">
+            <label for="route-notes">Observaciones de Entrega</label>
+            <input type="text" id="route-notes" placeholder="Ej. Llevar 15 pacas de 250ml y 8 bolsas 3L">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-route" style="color: var(--ink-soft); border-color: var(--rule);">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">
+            Guardar Ruta
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts del Administrador -->
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

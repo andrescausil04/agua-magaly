@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Guion de Pitch y Soluciones Tecnológicas — Agua Magaly</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      color: #1a252f;
+      line-height: 1.55;
+      font-size: 11pt;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+    }
+    .cover-card {
+      border-bottom: 2px solid #0B4F73;
+      padding-bottom: 16px;
+      margin-bottom: 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .header-titles h1 {
+      color: #0B4F73;
+      font-size: 20pt;
+      margin: 0 0 4px 0;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .header-titles h2 {
+      color: #1C7FA8;
+      font-size: 12pt;
+      margin: 0 0 8px 0;
+      font-weight: 600;
+    }
+    .meta-tag {
+      display: inline-block;
+      background: #E8F4F8;
+      color: #0B4F73;
+      font-size: 8.5pt;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      margin-right: 6px;
+    }
+    .author-box {
+      text-align: right;
+      font-size: 9pt;
+      color: #555;
+    }
+    .author-box strong {
+      color: #1a252f;
+    }
+    h2.section-title {
+      color: #0B4F73;
+      font-size: 14pt;
+      border-left: 4px solid #C68A3D;
+      padding-left: 10px;
+      margin: 22px 0 12px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    p {
+      margin: 0 0 10px 0;
+      text-align: justify;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px 0;
+      font-size: 9.5pt;
+    }
+    table th {
+      background: #0B4F73;
+      color: #ffffff;
+      text-align: left;
+      padding: 8px 10px;
+      font-weight: 600;
+    }
+    table td {
+      border-bottom: 1px solid #e1e8ed;
+      padding: 8px 10px;
+      vertical-align: top;
+    }
+    table tr:nth-child(even) td {
+      background: #F9FBFC;
+    }
+    .badge-problem {
+      background: #FDEDEC;
+      color: #C0392B;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 8pt;
+      display: inline-block;
+    }
+    .badge-solution {
+      background: #EAFaf1;
+      color: #1E824C;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 8pt;
+      display: inline-block;
+    }
+    /* Pitch blocks */
+    .pitch-block {
+      border: 1px solid #D5E2EA;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      page-break-inside: avoid;
+    }
+    .pitch-block-header {
+      background: #F0F6FA;
+      border-bottom: 1px solid #D5E2EA;
+      padding: 8px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .pitch-time {
+      background: #0B4F73;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 9pt;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .pitch-title {
+      font-weight: 700;
+      color: #0B4F73;
+      font-size: 11pt;
+    }
+    .pitch-goal {
+      font-size: 9pt;
+      color: #C68A3D;
+      font-weight: 700;
+    }
+    .pitch-body {
+      padding: 12px 14px;
+      font-size: 10pt;
+    }
+    .cue-box {
+      background: #FAF8F5;
+      border-left: 3px solid #C68A3D;
+      padding: 6px 10px;
+      font-size: 9pt;
+      color: #6E5328;
+      margin-bottom: 8px;
+    }
+    .speech {
+      color: #1c2833;
+      font-style: normal;
+      line-height: 1.5;
+    }
+    .speech strong {
+      color: #0B4F73;
+    }
+    .tips-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 14px;
+      font-size: 9.5pt;
+    }
+    .tip-card {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .tip-card h4 {
+      margin: 0 0 4px 0;
+      color: #0B4F73;
+      font-size: 10pt;
+    }
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ENCABEZADO INSTITUCIONAL -->
+  <div class="cover-card">
+    <div class="header-titles">
+      <h1>AGUA POTABLE MAGALY</h1>
+      <h2>INFORME DE SOLUCIONES TECNOLÓGICAS Y GUION DE PITCH (5 MINUTOS)</h2>
+      <div>
+        <span class="meta-tag">Bajo Grande, Sahagún (Córdoba)</span>
+        <span class="meta-tag">Ingeniería de Sistemas</span>
+        <span class="meta-tag">Transformación Digital PYMES</span>
+      </div>
+    </div>
+    <div class="author-box">
+      <strong>Universidad Cooperativa de Colombia</strong><br>
+      Curso: Ideación, Emprendimiento y Des. Tecnológico<br>
+      Grupo: Andrés Causil, Juan D. Salgado, Sebastián Madera,<br>
+      Julián Arcón, Sebastián Garavito<br>
+      Fecha: Septiembre 2026
+    </div>
+  </div>
+
+  <!-- SECCIÓN 1: SOLUCIONES FRENTE AL DIAGNÓSTICO DEL PDF -->
+  <h2 class="section-title">1. Diagnóstico del Documento y Soluciones Desarrolladas</h2>
+  <p>
+    En el informe diagnóstico de la microempresa <strong>Agua Magaly</strong>, el instrumento de madurez digital arrojó una calificación crítica de <strong>1.2 sobre 5.0</strong> en Integración Digital y Transformación Tecnológica, identificando que la empresa operaba de manera 100% analógica, sin canales digitales de venta, sin presencia en redes sociales y con desorden en la captura de pedidos y domicilios.
+  </p>
+  <p>
+    El ecosistema tecnológico desarrollado implementa soluciones directas a cada una de las brechas constatadas en el informe académico:
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 28%;">Brecha Diagnosticada en PDF</th>
+        <th style="width: 32%;">Impacto en el Negocio</th>
+        <th style="width: 40%;">Solución Tecnológica Implementada</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <span class="badge-problem">Brecha 1</span><br>
+          <strong>Sin plataforma de ventas online</strong><br>
+          (Puntaje: 1.0 / 5.0)
+        </td>
+        <td>Dependencia exclusiva de compradores que van físicamente hasta la planta. Ventas estancadas y sin alcance fuera de la cuadra.</td>
+        <td>
+          <span class="badge-solution">Solución Web</span><br>
+          <strong>Tienda Web 24/7 (<code>index.html</code>)</strong> con catálogo digital interactivo, precios transparentes de fábrica ($4.000 paca 250ml y $4.000 paca 3L), carrito reactivo y totalizador automático.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="badge-problem">Brecha 2</span><br>
+          <strong>Recepción caótica de pedidos</strong><br>
+          Sin datos de entrega ni teléfonos
+        </td>
+        <td>Domiciliarios perdidos, clientes que no contestan o pedidos incompletos por llamadas telefónicas mal anotadas.</td>
+        <td>
+          <span class="badge-solution">Checkout Estructurado</span><br>
+          <strong>Formulario de captura con validación estricta</strong>: Nombre, Dirección, Municipio/Depto y Celular (10 dígitos exactos iniciando obligatoriamente por 3). Genera mensaje automático a WhatsApp Business (<code>305 413 6677</code>).
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="badge-problem">Brecha 3</span><br>
+          <strong>Ausencia en redes sociales</strong><br>
+          Desconfianza del consumidor
+        </td>
+        <td>Falta de posicionamiento de marca e incertidumbre del cliente sobre la calidad higiénica y el registro INVIMA del agua.</td>
+        <td>
+          <span class="badge-solution">Ecosistema Social</span><br>
+          <strong>Perfil de Instagram (<code>instagram.html</code>)</strong> con insignia verificada, historias destacadas (Planta RO, INVIMA, Domicilios), fotografías profesionales con IA y botón de compra directa en cada post.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="badge-problem">Brecha 4</span><br>
+          <strong>Sin gestión de pedidos ni rutas</strong><br>
+          Control manual en papel
+        </td>
+        <td>Pérdida de trazabilidad: se desconocía qué pedidos estaban despachados, cuáles en ruta o si un cliente estaba insatisfecho.</td>
+        <td>
+          <span class="badge-solution">Backoffice Admin</span><br>
+          <strong>Panel administrativo (<code>admin.html</code> vía <code>/login</code>)</strong> con CRUD de productos, tablero de estados (Pendiente, En ruta, Finalizado, Cancelado), gestión de rutas de entrega y buzón de PQRS.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="badge-problem">Brecha 5</span><br>
+          <strong>Falta de acceso a distribuidores</strong><br>
+          Aislamiento rural en Bajo Grande
+        </td>
+        <td>Dificultad para negociar con colegios, restaurantes y tiendas de Sahagún por falta de presentación formal de la empresa.</td>
+        <td>
+          <span class="badge-solution">Escalabilidad B2B & B2C</span><br>
+          Presentación institucional de las <strong>Pacas de 250 ml (50 uds)</strong> y <strong>Pacas de 3 Litros</strong> a $4.000 con soporte de venta al por mayor para abastecer la sabana cordobesa.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SALTO DE PÁGINA PARA EL GUION -->
+  <div class="page-break"></div>
+
+  <!-- SECCIÓN 2: GUION DE PITCH (5 MINUTOS) -->
+  <h2 class="section-title">2. Guion Técnico para Video Pitch (5 Minutos Exactos)</h2>
+  <p style="font-size: 9.5pt; color: #555; margin-bottom: 14px;">
+    <strong>Formato de grabación recomendado:</strong> Video con presentador a cámara (en plano medio) intercalado con capturas de pantalla dinámicas del sistema web, el celular mostrando WhatsApp y el perfil de Instagram.
+  </p>
+
+  <!-- MINUTO 1 -->
+  <div class="pitch-block">
+    <div class="pitch-block-header">
+      <span class="pitch-time">0:00 - 1:00 (Minuto 1)</span>
+      <span class="pitch-title">El Problema y la Realidad de Bajo Grande</span>
+      <span class="pitch-goal">Gancho y Diagnóstico</span>
+    </div>
+    <div class="pitch-body">
+      <div class="cue-box">
+        <strong>Indicación visual:</strong> Iniciar con el presentador a cámara en un entorno luminoso. Luego mostrar imágenes de apoyo o B-Roll de Bajo Grande, Sahagún, y el informe diagnóstico universitario con la calificación de 1.2/5.0.
+      </div>
+      <div class="speech">
+        "¿Sabían que en muchas comunidades de nuestra región Caribe acceder a un vaso de agua 100% pura y tratada sigue siendo un desafío diario? Esta es la realidad de <strong>Bajo Grande</strong>, un corregimiento de Sahagún (Córdoba), donde históricamente las familias dependían de fuentes sin tratar o de esperar costosos camiones cisterna desde la ciudad.<br><br>
+        Para responder a esta necesidad nació <strong>Agua Magaly</strong>: la primera microempresa local dedicada al tratamiento, purificación por ósmosis inversa y envasado de agua potable con registro INVIMA. Sin embargo, cuando como ingenieros de sistemas de la Universidad Cooperativa de Colombia aplicamos el instrumento de madurez digital, encontramos una realidad alarmante: <strong>una calificación de apenas 1.2 sobre 5.0</strong>. Agua Magaly tenía un producto vital de excelente calidad, pero estaba atrapada en el aislamiento comercial: sin página web, sin redes sociales, tomando pedidos en papel y dependiendo solo de quienes llegaran a la planta. Hoy les presentamos cómo la tecnología transformó por completo este emprendimiento rural."
+      </div>
+    </div>
+  </div>
+
+  <!-- MINUTO 2 -->
+  <div class="pitch-block">
+    <div class="pitch-block-header">
+      <span class="pitch-time">1:00 - 2:00 (Minuto 2)</span>
+      <span class="pitch-title">La Solución: El Ecosistema Digital de Agua Magaly</span>
+      <span class="pitch-goal">Propuesta de Valor y Tienda Web</span>
+    </div>
+    <div class="pitch-body">
+      <div class="cue-box">
+        <strong>Indicación visual:</strong> Compartir pantalla en alta definición mostrando la página principal (<code>index.html</code>). Navegar suavemente por el hero, la sección de quiénes somos, y enfocar el nuevo logo oficial con fondo transparente y los dos productos en paca.
+      </div>
+      <div class="speech">
+        "Nuestra propuesta no fue simplemente crear una página informativa: construimos un <strong>ecosistema digital comercial y operativo integral</strong>.<br><br>
+        Aquí lo tienen: este es el portal oficial de <strong>Agua Magaly</strong>. Lo primero que destaca es la identidad visual con su logo oficial transparente y una propuesta de valor clara: agua potable local a precio justo de fábrica. Adaptamos el modelo de negocio a la demanda real de la zona con dos presentaciones vendidas por paca a solo <strong>$4.000 pesos</strong>: la <em>Paca de agua de 250 ml por 50 unidades</em>, perfecta para colegios y tiendas de barrio; y la <em>Paca de agua de 3 Litros</em>, diseñada para el consumo diario en los hogares y restaurantes.<br><br>
+        Cualquier habitante o comerciante de Sahagún puede ingresar desde su teléfono móvil y armar su pedido en tiempo real con un cotizador interactivo que calcula cantidades y subtotales al instante."
+      </div>
+    </div>
+  </div>
+
+  <!-- MINUTO 3 -->
+  <div class="pitch-block">
+    <div class="pitch-block-header">
+      <span class="pitch-time">2:00 - 3:00 (Minuto 3)</span>
+      <span class="pitch-title">Demostración en Vivo: Carrito, Validación y WhatsApp</span>
+      <span class="pitch-goal">Experiencia de Usuario y Cero Fricción</span>
+    </div>
+    <div class="pitch-body">
+      <div class="cue-box">
+        <strong>Indicación visual:</strong> Demostración en vivo en pantalla. El presentador agrega 2 pacas de 250ml y 1 de 3L. Luego muestra el formulario de datos del cliente: escribe el nombre, la dirección en Sahagún, intenta poner un teléfono erróneo (muestra la alerta en rojo), y luego pone un celular válido que inicia con 3. Clic en 'Pedir por WhatsApp'.
+      </div>
+      <div class="speech">
+        "Uno de los dolores de cabeza más graves detectados en el diagnóstico era el desorden en la entrega: pedidos sin dirección clara o teléfonos equivocados. Miren cómo lo solucionamos:<br><br>
+        Cuando el cliente suma sus pacas al carrito, el sistema le solicita de manera obligatoria sus datos de entrega: Nombre, Dirección exacta y Municipio. Pero incorporamos una validación técnica estricta en el número de contacto: el campo solo admite números, exige exactamente 10 dígitos y <strong>obliga a que comience por el dígito 3</strong>, garantizando que sea una línea celular colombiana activa.<br><br>
+        Al dar clic en <em>'Pedir por WhatsApp'</em>, no se abre un chat vacío: se transfiere automáticamente un mensaje estructurado con el nombre del cliente, su dirección en Sahagún, los productos solicitados y el total exacto directamente a la línea oficial de despacho <strong>305 413 6677</strong>. Esto reduce el tiempo de atención de 10 minutos a escasos 15 segundos y elimina cualquier margen de error."
+      </div>
+    </div>
+  </div>
+
+  <!-- SALTO DE PÁGINA PARA LA SEGUNDA PARTE DEL GUION -->
+  <div class="page-break"></div>
+
+  <!-- MINUTO 4 -->
+  <div class="pitch-block">
+    <div class="pitch-block-header">
+      <span class="pitch-time">3:00 - 4:00 (Minuto 4)</span>
+      <span class="pitch-title">Confianza Social (Instagram) y Gestión Interna (Admin)</span>
+      <span class="pitch-goal">Prueba Social y Control Operativo</span>
+    </div>
+    <div class="pitch-body">
+      <div class="cue-box">
+        <strong>Indicación visual:</strong> Transición en pantalla a <code>instagram.html</code>, mostrando las historias destacadas, las publicaciones con likes interactivos y comentarios. Luego, entrar a <code>/login</code> y mostrar el panel de administración (<code>admin.html</code>) con la gestión de pedidos y rutas.
+      </div>
+      <div class="speech">
+        "Para romper la barrera de la desconfianza, creamos el <strong>perfil oficial interactivo en Instagram</strong> (<code>@aguamagaly_oficial</code>). A través de fotografías de altísima calidad generadas con inteligencia artificial, mostramos la infraestructura de ósmosis inversa, el registro sanitario INVIMA, los repartidores recorriendo Sahagún y las familias en su mesa. Cada publicación cuenta con comentarios reales de la comunidad y un botón directo para pedir ese producto por WhatsApp.<br><br>
+        Pero la transformación no termina de cara al cliente; entra también a la administración. Mediante una ruta privada en <code>/login</code>, el administrador accede a un backoffice completo donde puede: modificar precios o imágenes de los productos en tiempo real, gestionar pedidos en un tablero Kanban de estados (Pendiente, En ruta y Finalizado), asignar rutas de despacho a los repartidores motorizados y atender oportunamente el buzón de PQRS de los clientes."
+      </div>
+    </div>
+  </div>
+
+  <!-- MINUTO 5 -->
+  <div class="pitch-block">
+    <div class="pitch-block-header">
+      <span class="pitch-time">4:00 - 5:00 (Minuto 5)</span>
+      <span class="pitch-title">Impacto Social, Escalabilidad y Cierre</span>
+      <span class="pitch-goal">Conclusión y Llamado a la Acción</span>
+    </div>
+    <div class="pitch-body">
+      <div class="cue-box">
+        <strong>Indicación visual:</strong> Regresar al presentador en cámara completa con gráficos de soporte que muestren el paso de 1.2 a 4.5 en madurez digital. Cerrar con los datos de contacto y el logo de Agua Magaly en pantalla.
+      </div>
+      <div class="speech">
+        "Con este sistema, Agua Magaly pasó de una calificación de 1.2 a un nivel de madurez digital superior a <strong>4.5 sobre 5.0</strong>. Logramos democratizar la tecnología en una zona rural, demostrando que la ingeniería de sistemas no es solo para grandes corporaciones, sino una palanca poderosa de desarrollo comunitario.<br><br>
+        Hoy Agua Magaly no solo abastece a Bajo Grande; tiene la infraestructura digital lista para escalar y convertirse en el principal proveedor de agua potable tratada para tiendas, colegios, empresas y hogares de toda la cabecera municipal de Sahagún y Córdoba.<br><br>
+        Agua pura, salud garantizada y tecnología al servicio de nuestra gente. Los invitamos a conocer el proyecto en <strong>aguamagaly.com</strong> y a contactarnos al <strong>305 413 6677</strong>. ¡Muchas gracias!"
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 3: FICHA DE PRODUCCIÓN PARA EL VIDEO -->
+  <h2 class="section-title">3. Ficha Técnica y Recomendaciones para la Grabación del Pitch</h2>
+  <div class="tips-grid">
+    <div class="tip-card">
+      <h4>🎙️ Audio y Voz</h4>
+      Tono seguro, empático y profesional. Usar micrófono de solapa o manos libres para evitar eco. Modular la velocidad para no sobrepasar los 130-140 palabras por minuto.
+    </div>
+    <div class="tip-card">
+      <h4>💡 Iluminación y Encuadre</h4>
+      Luz frontal natural o aro de luz blanco. Plano medio (del pecho a la cabeza). Fondo limpio o alusivo al proyecto (computador con la página abierta).
+    </div>
+    <div class="tip-card">
+      <h4>🖥️ Grabación de Pantalla (Screenflow)</h4>
+      Grabar la pantalla a 1080p con OBS Studio o la barra de juegos de Windows (Win + G). Ocultar marcadores del navegador y usar zoom al hacer clic en botones.
+    </div>
+    <div class="tip-card">
+      <h4>⏱️ Control de Tiempos</h4>
+      El video no debe exceder los 5 minutos. Cada bloque está medido para exactamente 60 segundos con márgenes de transición.
+    </div>
+  </div>
+
+</body>
+</html>

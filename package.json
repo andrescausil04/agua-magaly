@@ -1,0 +1,8 @@
+{
+  "name": "agua-magaly",
+  "version": "1.0.0",
+  "description": "Sitio web de Agua Magaly — Agua Potable Tratada y Envasada, Bajo Grande, Sahagún (Córdoba)",
+  "scripts": {
+    "dev": "npx -y live-server --port=8085 --no-browser"
+  }
+}

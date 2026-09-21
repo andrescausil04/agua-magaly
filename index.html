@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agua Magaly — Agua Potable, Tratada y Envasada en Bajo Grande, Sahagún</title>
+  <meta name="description" content="Agua Magaly es la primera microempresa de agua potable tratada y envasada en Bajo Grande, Sahagún (Córdoba). Presentaciones de pacas 250 ml y bolsas de 3 litros con registro INVIMA. Pide directo por WhatsApp.">
+  <meta name="keywords" content="Agua Magaly, agua potable, Bajo Grande, Sahagún, Córdoba, pacas de agua, bolsa 3 litros, INVIMA, agua tratada envasada">
+
+  <!-- Tipografías de Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Estilos del Sistema y Favicon -->
+  <link rel="icon" type="image/png" href="assets/logo-magaly.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ========================================================================
+       BARRA DE NAVEGACIÓN PÚBLICA (SIN BOTÓN VISIBLE DE ADMIN)
+       ======================================================================== -->
+  <header class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="brand" aria-label="Inicio Agua Magaly">
+        <img src="assets/logo-magaly.png" alt="Logo Agua Magaly" class="logo-mark" width="46" height="46">
+        <div class="brand-text">
+          <span class="brand-title">Agua Magaly</span>
+          <span class="brand-sub">Agua Potable Envasada</span>
+        </div>
+      </a>
+
+      <nav class="links" aria-label="Navegación principal">
+        <a href="#problema">El problema</a>
+        <a href="#quienes-somos">Quiénes somos</a>
+        <a href="#productos">Productos y Pedido</a>
+        <a href="#pasos">Cómo pedir</a>
+        <a href="#quejas">Quejas y sugerencias</a>
+        <a href="https://www.instagram.com/aguamagaly?stkn=MXE5N3NvdzNjazJzNQ==" target="_blank" rel="noopener" style="color: var(--sand); font-weight: 700;" title="Ver perfil oficial de Instagram">📸 Instagram</a>
+      </nav>
+
+      <div class="nav-actions">
+        <div class="nav-cart" id="nav-cart-btn" role="button" tabindex="0" aria-label="Ver carrito de compras">
+          <span class="cart-icon-wrap">
+            🛒 <span class="cart-badge" id="nav-cart-badge">0</span>
+          </span>
+          <span id="nav-total">$0</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       HERO PRINCIPAL
+       ======================================================================== -->
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow-line">
+        <span class="dot"></span> Bajo Grande, Sahagún · Córdoba, Colombia
+      </div>
+      <h1>Agua potable, tratada y envasada, hecha por y para Bajo Grande.</h1>
+      <p class="lede">
+        La primera microempresa de agua envasada del corregimiento. Extraída de pozo profundo propio de 60 metros, certificada sanitariamente por el INVIMA y lista para pedir a domicilio.
+      </p>
+      <div class="hero-ctas">
+        <a href="#productos" class="btn btn-primary">Ver productos y pedir</a>
+        <a href="#quienes-somos" class="btn btn-ghost">Conocer nuestra historia</a>
+      </div>
+    </div>
+
+    <div class="hero-photo-wrap">
+      <img src="assets/bolsa-250ml.jpg" alt="Presentación oficial de Agua Magaly 250 ml en Bajo Grande">
+      <div class="hero-photo-overlay"></div>
+      <div class="hero-photo-tag">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B4F73" stroke-width="2.5">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        Producto certificado · <em>Bolsa 250 ml y 3 Litros</em>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECCIÓN: EL PROBLEMA SOCIAL
+       ======================================================================== -->
+  <section class="problema" id="problema">
+    <div class="wrap problema-grid">
+      <div class="stat-block">
+        <div class="stat-number">2.000+</div>
+        <div class="stat-label">
+          habitantes de Bajo Grande sin acueducto público, históricamente dependientes de agua traída desde ciudades lejanas a altos costos.
+        </div>
+      </div>
+      <div class="problema-text">
+        <p>
+          Durante más de dos décadas, el corregimiento de <strong>Bajo Grande</strong> (Sahagún, Córdoba) ha enfrentado la falta de agua potable continua. Las familias y comerciantes debían pagar fletes excesivos para traer agua de municipios vecinos, exponiéndose a desabastecimientos y riesgos sanitarios.
+        </p>
+        <p>
+          <strong>Agua Magaly</strong> nació como una solución endógena y comunitaria: instalamos tecnología de purificación y envasado en la misma vereda, ofreciendo agua con control sanitario oficial y a un precio justo para nuestra gente.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECCIÓN: QUIÉNES SOMOS & FICHA EMPRESARIAL (DATOS DEL PDF)
+       ======================================================================== -->
+  <section class="quienes" id="quienes-somos">
+    <div class="wrap quienes-grid">
+      <div>
+        <div class="section-head" style="margin-bottom: 24px;">
+          <span class="kicker">Quiénes somos</span>
+          <h2>La primera microempresa de agua envasada de Bajo Grande</h2>
+        </div>
+        <div class="quienes-text">
+          <p>
+            <strong>Agua Magaly</strong> es un emprendimiento rural de impacto social y económico constituido en el corregimiento de Bajo Grande, municipio de Sahagún (Córdoba).
+          </p>
+          <p>
+            Contamos con un <strong>pozo profundo de 60 metros</strong> de extracción con abundante caudal y sistema de filtración industrial multietapa. Envasamos cumpliendo estrictamente con la normatividad sanitaria colombiana, generando empleo local y digno para las familias de la zona.
+          </p>
+        </div>
+        <ul class="quienes-list">
+          <li>
+            <b>Propuesta de valor:</b>
+            <span>Agua 100% potable, fresca y económica, sin sobrecostos de intermediarios ni transporte desde la ciudad.</span>
+          </li>
+          <li>
+            <b>A quiénes servimos:</b>
+            <span>Hogares de Bajo Grande, comerciantes y abastos locales (línea de reventa), instituciones educativas y centros de salud comunitarios.</span>
+          </li>
+          <li>
+            <b>Canales de entrega:</b>
+            <span>Venta directa en nuestra planta de producción y distribución programada por WhatsApp a domicilio.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="fact-sheet">
+        <div class="fact-sheet-head">
+          <h3>Ficha Institucional</h3>
+          <span>Datos Oficiales</span>
+        </div>
+        <div class="fact-row">
+          <span class="k">Razón Social</span>
+          <span class="v">Agua Magaly (Agua Magali)</span>
+        </div>
+        <div class="fact-row">
+          <span class="k">NIT de Registro</span>
+          <span class="v">800.681.544-9</span>
+        </div>
+        <div class="fact-row">
+          <span class="k">Sector Económico</span>
+          <span class="v">Industria de Alimentos y Bebidas</span>
+        </div>
+        <div class="fact-row">
+          <span class="k">Infraestructura</span>
+          <span class="v">Pozo profundo propio (60 metros)</span>
+        </div>
+        <div class="fact-row">
+          <span class="k">Certificación</span>
+          <span class="v">Permiso y Control Sanitario INVIMA</span>
+        </div>
+        <div class="fact-row">
+          <span class="k">Cámara de Comercio</span>
+          <span class="v">Registro Mercantil Activo</span>
+        </div>
+        <div class="fact-row">
+          <span class="k">Equipo de Trabajo</span>
+          <span class="v">Microempresa local (4 empleos directos)</span>
+        </div>
+        <div class="pin">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M12 22s7-7.2 7-12.5A7 7 0 0 0 5 9.5C5 14.8 12 22 12 22Z" stroke="currentColor" stroke-width="2"/>
+            <circle cx="12" cy="9.5" r="2.5" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <div>
+            <strong>Planta de envasado:</strong>
+            Corregimiento de Bajo Grande, Sahagún · Córdoba, Colombia.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECCIÓN: PRODUCTOS Y PEDIDO EN LÍNEA
+       ======================================================================== -->
+  <section class="productos" id="productos">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Catálogo y Pedidos</span>
+        <h2>Nuestras presentaciones de agua potable</h2>
+        <p>
+          Elige la cantidad de pacas que necesitas. Ambas presentaciones se venden por pacas completas a precios justos directos de fábrica ($4.000 la paca).
+        </p>
+      </div>
+
+      <div class="order-panel">
+        <div class="order-banner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span><strong>Precios de fábrica:</strong> La paca de agua de 250 ml a $4.000 | La paca de agua de 3 Litros a $4.000.</span>
+        </div>
+
+        <!-- Contenedor dinámico de productos (gestionado por JS y sincronizado con Admin) -->
+        <div id="products-container">
+          <!-- Producto 1: Paca de 250 ml -->
+          <div class="product-row" data-id="250" data-price="4000">
+            <div class="product-thumb">
+              <img src="assets/bolsa-250ml.jpg" alt="Paca de agua Magaly 250 ml (50 bolsas)">
+            </div>
+            <div class="product-info">
+              <h3>Paca de agua 250 ml</h3>
+              <span class="badge-tag">Venta por Paca (50 uds)</span>
+              <div class="desc">
+                Paca completa de 50 bolsitas individuales de 250 ml. Presentación ideal para consumo personal, tiendas de barrio, eventos y colegios.
+              </div>
+              <div class="price">$4.000 <span class="note">/ paca de 250ml</span></div>
+            </div>
+            <div class="qty-stepper">
+              <button type="button" class="qty-minus" aria-label="Quitar una paca de 250 ml">–</button>
+              <span class="qty-val">0</span>
+              <button type="button" class="qty-plus" aria-label="Agregar una paca de 250 ml">+</button>
+            </div>
+            <div class="row-subtotal">$0</div>
+          </div>
+
+          <!-- Producto 2: Paca de agua 3 Litros -->
+          <div class="product-row" data-id="3L" data-price="4000">
+            <div class="product-thumb">
+              <img src="assets/bolsa-3l.jpg" alt="Paca de agua Magaly 3 Litros">
+            </div>
+            <div class="product-info">
+              <h3>Paca de agua 3 Litros</h3>
+              <span class="badge-tag" style="background: #EAF3EB; color: #1C7B38;">Venta por Paca</span>
+              <div class="desc">
+                Paca resistente de agua tratada en presentación de 3 Litros con agarraderas ergonómicas. Diseñada para abastecimiento del hogar, fincas y restaurantes.
+              </div>
+              <div class="price">$4.000 <span class="note">/ paca de 3L</span></div>
+            </div>
+            <div class="qty-stepper">
+              <button type="button" class="qty-minus" aria-label="Quitar una paca de 3 Litros">–</button>
+              <span class="qty-val">0</span>
+              <button type="button" class="qty-plus" aria-label="Agregar una paca de 3 Litros">+</button>
+            </div>
+            <div class="row-subtotal">$0</div>
+          </div>
+        </div>
+
+        <!-- Desglose interactivo del pedido -->
+        <div class="cart-section">
+          <div class="cart-head">
+            <h4>Tu pedido <span id="cart-count">(0 unidades)</span></h4>
+            <button type="button" class="btn-text" id="clear-cart-btn" disabled>Vaciar lista</button>
+          </div>
+          <div id="cart-list">
+            <div class="cart-empty">Aún no has agregado ninguna paca de agua. Usa los botones + para armar tu pedido.</div>
+          </div>
+        </div>
+
+        <!-- Formulario de datos del cliente para despacho directo -->
+        <div class="customer-data-card" id="customer-data-card">
+          <div class="customer-data-head">
+            <h4>📋 Datos de entrega y contacto</h4>
+            <span class="customer-data-sub">Completa tus datos para coordinar el despacho directo a tu puerta</span>
+          </div>
+
+          <div class="customer-grid">
+            <div class="cust-field">
+              <label for="cust-name">Nombre completo <span class="req">*</span></label>
+              <input type="text" id="cust-name" class="cust-input" placeholder="Ej: Carmen Gómez" autocomplete="name" required>
+            </div>
+
+            <div class="cust-field">
+              <label for="cust-phone">Número de contacto / WhatsApp <span class="req">*</span></label>
+              <input type="tel" id="cust-phone" class="cust-input" placeholder="Ej: 3054136677" maxlength="10" autocomplete="tel" required>
+              <span class="cust-hint" id="cust-phone-hint">10 dígitos exactos, debe iniciar por 3</span>
+            </div>
+
+            <div class="cust-field">
+              <label for="cust-address">Dirección de entrega <span class="req">*</span></label>
+              <input type="text" id="cust-address" class="cust-input" placeholder="Ej: Calle 4 # 12-30 / Barrio El Centro" autocomplete="street-address" required>
+            </div>
+
+            <div class="cust-field">
+              <label for="cust-city">Municipio y Departamento <span class="req">*</span></label>
+              <input type="text" id="cust-city" class="cust-input" placeholder="Ej: Sahagún, Córdoba (o Bajo Grande)" value="Sahagún, Córdoba" required>
+            </div>
+          </div>
+
+          <div id="cust-validation-msg" class="cust-validation-msg" style="display: none;"></div>
+        </div>
+
+        <!-- Resumen y botón de WhatsApp -->
+        <div class="order-summary">
+          <div>
+            <span class="total-line">Total estimado</span>
+            <span class="total-amount" id="grand-total">$0</span>
+            <div id="order-empty-msg">Agrega productos al carrito y completa tus datos para enviar.</div>
+          </div>
+          <a href="#" id="whatsapp-btn" class="btn btn-primary" aria-disabled="true" target="_blank" rel="noopener">
+            Pedir por WhatsApp →
+          </a>
+        </div>
+      </div>
+      <p class="order-note">
+        * Al presionar "Pedir por WhatsApp", se enviará automáticamente el detalle de tu compra junto con tus datos de entrega para que Agua Magaly confirme la ruta y coordine el despacho.
+      </p>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECCIÓN: CÓMO FUNCIONA EL PEDIDO (PASOS)
+       ======================================================================== -->
+  <section class="pasos" id="pasos">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Proceso simple</span>
+        <h2>¿Cómo realizar tu pedido en 3 pasos?</h2>
+      </div>
+      <div class="pasos-list">
+        <div class="paso">
+          <span class="num">01</span>
+          <h3>Selecciona tus cantidades</h3>
+          <p>Usa los botones + y – en la sección de productos para sumar las pacas de 250 ml o bolsas de 3L que necesites.</p>
+        </div>
+        <div class="paso">
+          <span class="num">02</span>
+          <h3>Envía tu pedido por WhatsApp</h3>
+          <p>Toca el botón "Pedir por WhatsApp". Se generará un mensaje automático con el detalle exacto de tu compra.</p>
+        </div>
+        <div class="paso">
+          <span class="num">03</span>
+          <h3>Recibe en Bajo Grande</h3>
+          <p>Coordinamos la entrega inmediata en tu vivienda o tienda, o puedes recogerlo en nuestra planta de purificación.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECCIÓN: IMPACTO COMUNITARIO (DEL MODELO CANVAS DEL PDF)
+       ======================================================================== -->
+  <section class="impacto" id="impacto">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Impacto social y económico</span>
+        <h2>Un modelo con tres grandes beneficiarios</h2>
+        <p>Agua Magaly no es solo un negocio: es una iniciativa de desarrollo endógeno que empodera a la comunidad rural.</p>
+      </div>
+      <div class="impacto-grid">
+        <div class="impacto-item">
+          <h3>1. Familias de la comunidad</h3>
+          <p>Acceso continuo a agua 100% potable, segura y asequible sin depender del clima ni de carrotanques lejanos.</p>
+        </div>
+        <div class="impacto-item">
+          <h3>2. Comerciantes y tiendas</h3>
+          <p>Margen de ganancia atractivo para la reventa en abastos y pulperías locales, dinamizando la economía veredal.</p>
+        </div>
+        <div class="impacto-item">
+          <h3>3. Empleo y desarrollo rural</h3>
+          <p>Generación de empleo en Bajo Grande y reinversión constante para ampliar la capacidad de bombeo y purificación.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECCIÓN: CONFIANZA Y CERTIFICACIONES
+       ======================================================================== -->
+  <section class="confianza">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Respaldo legal y sanitario</span>
+        <h2>Comprometidos con la pureza y la formalidad</h2>
+      </div>
+      <div class="badges">
+        <div class="badge">
+          <svg class="check" viewBox="0 0 24 24" fill="none">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <div>
+            <h4>Permiso Sanitario INVIMA</h4>
+            <p>Agua purificada, tratada y envasada con protocolos de inocuidad y control bacteriológico verificado.</p>
+          </div>
+        </div>
+        <div class="badge">
+          <svg class="check" viewBox="0 0 24 24" fill="none">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <div>
+            <h4>NIT 800.681.544-9</h4>
+            <p>Empresa registrada y formalmente constituida en Colombia, respaldando a todos nuestros clientes.</p>
+          </div>
+        </div>
+        <div class="badge">
+          <svg class="check" viewBox="0 0 24 24" fill="none">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <div>
+            <h4>Cámara de Comercio</h4>
+            <p>Registro mercantil activo que valida nuestra trayectoria y compromiso de crecimiento en Sahagún.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       SECCIÓN: QUEJAS Y SUGERENCIAS (PQRS CONECTADA A WHATSAPP)
+       ======================================================================== -->
+  <section class="quejas" id="quejas">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="kicker">Tu opinión nos ayuda a mejorar</span>
+        <h2>Buzón de Quejas, Sugerencias y Reclamos</h2>
+        <p>
+          Queremos brindarte el mejor servicio. Envía tus comentarios, inquietudes sobre entregas o sugerencias directamente a nuestro canal de WhatsApp.
+        </p>
+      </div>
+
+      <form class="quejas-form" id="quejas-form">
+        <div class="form-two">
+          <div class="form-row">
+            <label for="q-nombre">Nombre y Apellido *</label>
+            <input id="q-nombre" type="text" placeholder="Ej. Juan Pérez" required>
+          </div>
+          <div class="form-row">
+            <label for="q-contacto">Teléfono celular o WhatsApp</label>
+            <input id="q-contacto" type="text" placeholder="Ej. 310 123 4567">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="q-tipo">Tipo de solicitud *</label>
+          <select id="q-tipo">
+            <option value="Sugerencia">💡 Sugerencia</option>
+            <option value="Queja">⚠️ Queja sobre el servicio</option>
+            <option value="Reclamo">🚨 Reclamo sobre un pedido</option>
+            <option value="Felicitación">⭐ Felicitación o reconocimiento</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label for="q-mensaje">Detalle de tu mensaje *</label>
+          <textarea id="q-mensaje" rows="4" placeholder="Describe lo que ocurrió o tu propuesta de mejora..." required></textarea>
+        </div>
+
+        <div>
+          <button type="submit" class="btn btn-primary">
+            Enviar reporte por WhatsApp →
+          </button>
+          <div id="quejas-status"></div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       PIE DE PÁGINA (CONECTIVIDAD WHATSAPP & INSTAGRAM)
+       ======================================================================== -->
+  <footer>
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <h4>Agua Magaly</h4>
+          <p style="max-width: 36ch;">
+            Microempresa de agua potable tratada y envasada en Bajo Grande, Sahagún (Córdoba). Comprometidos con el bienestar, la salud y la economía de nuestra comunidad.
+          </p>
+          <p style="font-size: 12.5px; color: var(--blue-pale);">
+            <strong>NIT:</strong> 800.681.544-9 · Registro Sanitario INVIMA
+          </p>
+          
+          <!-- Redes Sociales: WhatsApp e Instagram -->
+          <div class="social-row">
+            <!-- Botón activo de WhatsApp -->
+            <a href="#" id="footer-whatsapp-icon" class="social-btn" target="_blank" rel="noopener" aria-label="Escríbenos a WhatsApp" title="WhatsApp oficial de Agua Magaly">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24m4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.03-1.24-.75-.67-1.26-1.5-1.41-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.37-.44.13-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.35-.77-1.85-.2-.49-.4-.42-.56-.43h-.47c-.16 0-.43.06-.66.31-.22.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.57.13.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.53.6.19 1.14.16 1.57.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.07-.12-.23-.19-.48-.31z"/>
+              </svg>
+            </a>
+
+            <!-- Botón activo de Instagram (Perfil oficial de la marca) -->
+            <a href="https://www.instagram.com/aguamagaly?stkn=MXE5N3NvdzNjazJzNQ==" id="footer-instagram-icon" class="social-btn" target="_blank" rel="noopener" aria-label="Instagram oficial de Agua Magaly" title="Ver Instagram oficial @aguamagaly_oficial">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <div>
+          <h4>Enlaces de interés</h4>
+          <a href="#" id="footer-whatsapp">📱 Línea de pedidos WhatsApp</a>
+          <a href="https://www.instagram.com/aguamagaly?stkn=MXE5N3NvdzNjazJzNQ==" target="_blank" rel="noopener">📸 Instagram oficial (@aguamagaly_oficial)</a>
+          <a href="#productos">📦 Ver catálogo de agua</a>
+          <a href="#quejas">📝 Quejas y sugerencias</a>
+        </div>
+
+        <div>
+          <h4>Contacto y Ubicación</h4>
+          <p><strong>Ubicación:</strong> Bajo Grande, corregimiento de Sahagún (Córdoba).</p>
+          <p><strong>Línea directa:</strong> +57 305 413 6677</p>
+          <p><strong>Atención:</strong> Lunes a Domingo de 7:00 AM a 6:00 PM</p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>© 2026 Agua Magaly. Todos los derechos reservados. Bajo Grande, Sahagún.</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts modulares -->
+  <script src="js/main.js"></script>
+</body>
+</html>
