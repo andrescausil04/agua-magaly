@@ -1,0 +1,5 @@
+# Documentos internos / borradores (no son parte del sitio)
+*.pdf
+pdf_*.txt
+decoded_*.txt
+*_context.txt
