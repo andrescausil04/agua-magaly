@@ -103,6 +103,8 @@
   const custCityInput = document.getElementById('cust-city');
   const custPhoneHint = document.getElementById('cust-phone-hint');
   const custValidationMsg = document.getElementById('cust-validation-msg');
+  const quejasForm = document.getElementById('quejas-form');
+  const quejasStatus = document.getElementById('quejas-status');
 
   function getCustomerData() {
     const name = custNameInput ? custNameInput.value.trim() : '';
