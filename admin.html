@@ -4,183 +4,227 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel de Administración — Agua Magaly</title>
-  
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
   <link rel="icon" type="image/png" href="assets/logo-magaly.png">
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/panel.css">
 </head>
-<body class="admin-layout" id="admin-page">
+<body class="panel-shell" id="admin-page">
 
-  <!-- BARRA SUPERIOR DEL ADMINISTRADOR -->
-  <nav class="admin-nav">
-    <div style="display: flex; align-items: center; gap: 14px;">
-      <a href="index.html" class="brand" title="Ir a la tienda pública">
-        <img src="assets/logo-magaly.png" alt="Logo Agua Magaly" class="logo-mark" width="42" height="42" style="object-fit: contain;">
-        <span>Agua Magaly</span>
-      </a>
-      <span class="badge-role">Panel Oficial</span>
+  <!-- ======================================================================
+       BARRA LATERAL
+       ====================================================================== -->
+  <aside class="panel-sidebar">
+    <a href="index.html" class="panel-brand">
+      <img src="assets/logo-magaly.png" alt="Logo Agua Magaly">
+      <span>
+        <strong>Agua Magaly</strong>
+        <small>Administración</small>
+      </span>
+    </a>
+
+    <nav class="panel-nav" aria-label="Secciones del panel">
+      <button type="button" class="panel-nav-btn active" data-section="resumen" title="Resumen">
+        <span class="nav-ico">📊</span><span class="nav-label-long">Resumen</span>
+      </button>
+      <button type="button" class="panel-nav-btn" data-section="pedidos" title="Pedidos">
+        <span class="nav-ico">🧾</span><span class="nav-label-long">Pedidos</span>
+        <span class="nav-count" id="count-orders">0</span>
+      </button>
+      <button type="button" class="panel-nav-btn" data-section="repartidores" title="Repartidores">
+        <span class="nav-ico">🛵</span><span class="nav-label-long">Repartidores</span>
+        <span class="nav-count" id="count-drivers">0</span>
+      </button>
+      <button type="button" class="panel-nav-btn" data-section="productos" title="Productos">
+        <span class="nav-ico">📦</span><span class="nav-label-long">Productos</span>
+        <span class="nav-count" id="count-products">0</span>
+      </button>
+      <button type="button" class="panel-nav-btn" data-section="rutas" title="Rutas">
+        <span class="nav-ico">🗺️</span><span class="nav-label-long">Rutas</span>
+        <span class="nav-count" id="count-routes">0</span>
+      </button>
+      <button type="button" class="panel-nav-btn" data-section="pqrs" title="PQRS">
+        <span class="nav-ico">💬</span><span class="nav-label-long">PQRS</span>
+        <span class="nav-count" id="count-pqrs">0</span>
+      </button>
+      <button type="button" class="panel-nav-btn" data-section="cuenta" title="Mi cuenta">
+        <span class="nav-ico">👤</span><span class="nav-label-long">Mi cuenta</span>
+      </button>
+    </nav>
+
+    <div class="panel-sidebar-foot">
+      <div class="avatar" id="admin-avatar" style="background:#1C7FA8">AD</div>
+      <div class="who">
+        <strong id="admin-name">Administrador</strong>
+        <span>Administrador</span>
+      </div>
+      <button type="button" class="sidebar-logout" data-logout title="Cerrar sesión">Salir</button>
     </div>
+  </aside>
 
-    <div class="admin-user-pill">
-      <span class="badge-ok">● Sesión: <strong>admin</strong></span>
-      <a href="index.html" class="btn btn-ghost btn-sm" style="border-color: rgba(255,255,255,0.4);">
-        Ver Tienda
-      </a>
-      <button type="button" class="btn btn-danger btn-sm" id="logout-btn">
-        Cerrar Sesión
-      </button>
-    </div>
-  </nav>
+  <!-- ======================================================================
+       CONTENIDO
+       ====================================================================== -->
+  <main class="panel-main">
 
-  <main class="admin-container">
-    <!-- PESTAÑAS DE NAVEGACIÓN INTERNA -->
-    <div class="admin-tabs" role="tablist">
-      <button type="button" class="admin-tab-btn active" data-tab="tab-productos">
-        📦 Productos (CRUD)
-        <span class="tab-badge" id="tab-badge-products">2</span>
-      </button>
-      <button type="button" class="admin-tab-btn" data-tab="tab-pedidos">
-        🛒 Gestión de Pedidos
-        <span class="tab-badge" id="tab-badge-orders">0</span>
-      </button>
-      <button type="button" class="admin-tab-btn" data-tab="tab-rutas">
-        🚚 Rutas de Entrega
-        <span class="tab-badge" id="tab-badge-routes">3</span>
-      </button>
-      <button type="button" class="admin-tab-btn" data-tab="tab-pqrs">
-        📩 Quejas y Sugerencias
-        <span class="tab-badge" id="tab-badge-pqrs">0</span>
-      </button>
-    </div>
+    <!-- RESUMEN -->
+    <section class="panel-section active" id="section-resumen">
+      <div class="panel-head-row">
+        <div>
+          <h1>Resumen del día</h1>
+          <p id="resumen-subtitle">Cargando información…</p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-refresh" style="color:var(--blue-deep);border-color:var(--rule)">↻ Actualizar</button>
+          <a href="index.html" class="btn btn-primary btn-sm" target="_blank" rel="noopener">Ver tienda</a>
+        </div>
+      </div>
 
-    <!-- ====================================================================
-         SECCIÓN 1: CRUD DE PRODUCTOS
-         ==================================================================== -->
-    <section id="tab-productos" class="admin-tab-content">
-      <div class="admin-card-panel">
-        <div class="panel-head">
-          <div>
-            <h3>Catálogo de Productos y Precios</h3>
-            <p style="margin: 0; color: var(--ink-soft); font-size: 13.5px;">
-              Edita precios, nombres, descripciones y disponibilidad. Los cambios se reflejan automáticamente en la tienda pública.
-            </p>
+      <div class="kpi-grid" id="kpi-grid"></div>
+
+      <div class="dash-grid">
+        <div class="panel-card">
+          <div class="panel-card-head">
+            <div>
+              <h2>Ventas de los últimos 7 días</h2>
+              <p>Total entregado por día</p>
+            </div>
+            <span class="chip" id="chart-total">$0</span>
           </div>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-add-product">
-            + Nuevo Producto
-          </button>
+          <div class="chart-wrap"><canvas id="sales-chart" role="img" aria-label="Gráfico de ventas de los últimos 7 días"></canvas></div>
         </div>
 
-        <div class="admin-table-wrap">
-          <table class="admin-table" id="products-table">
-            <thead>
-              <tr>
-                <th>Imagen</th>
-                <th>Nombre / Producto</th>
-                <th>Presentación</th>
-                <th>Precio Actual</th>
-                <th>Estado</th>
-                <th style="text-align: right;">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="products-table-body">
-              <!-- Renderizado dinámicamente con JS -->
-            </tbody>
-          </table>
+        <div class="panel-card">
+          <div class="panel-card-head">
+            <div>
+              <h2>Actividad reciente</h2>
+              <p>Últimos movimientos de pedidos</p>
+            </div>
+          </div>
+          <ul class="activity-list" id="activity-list"></ul>
         </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-card-head">
+          <div>
+            <h2>Carga de repartidores</h2>
+            <p>Pedidos pendientes y en ruta asignados a cada uno</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-goto="repartidores" style="color:var(--blue-deep);border-color:var(--rule)">Gestionar</button>
+        </div>
+        <div class="driver-grid" id="drivers-overview"></div>
       </div>
     </section>
 
-    <!-- ====================================================================
-         SECCIÓN 2: GESTIÓN DE PEDIDOS (FINALIZAR / CANCELAR)
-         ==================================================================== -->
-    <section id="tab-pedidos" class="admin-tab-content" style="display: none;">
-      <div class="admin-card-panel">
-        <div class="panel-head">
+    <!-- PEDIDOS -->
+    <section class="panel-section" id="section-pedidos">
+      <div class="panel-head-row">
+        <div>
+          <h1>Pedidos</h1>
+          <p>Arrastra una tarjeta para cambiar el estado o toca una para ver el seguimiento. Atajos: <strong>/</strong> buscar · <strong>N</strong> nuevo pedido.</p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-export-orders" style="color:var(--blue-deep);border-color:var(--rule)">⬇ Exportar CSV</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-new-order">+ Nuevo pedido</button>
+        </div>
+      </div>
+
+      <div class="board-toolbar">
+        <div class="search-box">
+          <span class="s-ico">🔎</span>
+          <input type="search" id="orders-search" placeholder="Buscar por cliente, teléfono, código o dirección…" autocomplete="off">
+        </div>
+        <div class="seg" id="orders-range">
+          <button type="button" class="active" data-range="hoy">Hoy</button>
+          <button type="button" data-range="7">7 días</button>
+          <button type="button" data-range="todos">Todos</button>
+        </div>
+        <label class="switch" title="Mostrar pedidos cancelados">
+          <input type="checkbox" id="orders-show-cancelled">
+          <span class="track"></span>
+          Cancelados
+        </label>
+      </div>
+
+      <div class="kanban" id="kanban"></div>
+    </section>
+
+    <!-- REPARTIDORES -->
+    <section class="panel-section" id="section-repartidores">
+      <div class="panel-head-row">
+        <div>
+          <h1>Repartidores</h1>
+          <p>Cada repartidor entra con su propio usuario a <code>repartidor.html</code> y solo ve sus pedidos.</p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-new-driver">+ Nuevo repartidor</button>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-card-head">
           <div>
-            <h3>Control y Despacho de Pedidos</h3>
-            <p style="margin: 0; color: var(--ink-soft); font-size: 13.5px;">
-              Supervisa pedidos en tiempo real. Puedes ponerlos en ruta, finalizarlos al entregar o cancelarlos.
-            </p>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn btn-ghost btn-sm" style="color: var(--blue-deep); border-color: var(--rule);" id="btn-add-order">
-              + Registrar Pedido
-            </button>
+            <h2>Equipo de reparto</h2>
+            <p>Usuarios y claves de acceso</p>
           </div>
         </div>
-
-        <!-- Filtros rápidos de pedidos -->
-        <div style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap;">
-          <button type="button" class="btn btn-sm order-filter-btn active" data-filter="todos">Todos</button>
-          <button type="button" class="btn btn-sm order-filter-btn" data-filter="Pendiente">Pendientes</button>
-          <button type="button" class="btn btn-sm order-filter-btn" data-filter="En ruta">En Ruta</button>
-          <button type="button" class="btn btn-sm order-filter-btn" data-filter="Finalizado">Finalizados</button>
-          <button type="button" class="btn btn-sm order-filter-btn" data-filter="Cancelado">Cancelados</button>
-        </div>
-
-        <div class="admin-table-wrap">
-          <table class="admin-table" id="orders-table">
-            <thead>
-              <tr>
-                <th>ID Pedido</th>
-                <th>Cliente / Teléfono</th>
-                <th>Detalle del Pedido</th>
-                <th>Total</th>
-                <th>Fecha y Hora</th>
-                <th>Estado</th>
-                <th style="text-align: right;">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="orders-table-body">
-              <!-- Renderizado dinámicamente con JS -->
-            </tbody>
-          </table>
-        </div>
+        <div class="driver-grid" id="drivers-grid"></div>
       </div>
     </section>
 
-    <!-- ====================================================================
-         SECCIÓN 3: CONTROL DE RUTAS DE ENTREGA
-         ==================================================================== -->
-    <section id="tab-rutas" class="admin-tab-content" style="display: none;">
-      <div class="admin-card-panel">
-        <div class="panel-head">
-          <div>
-            <h3>Zonas y Rutas de Reparto en Bajo Grande</h3>
-            <p style="margin: 0; color: var(--ink-soft); font-size: 13.5px;">
-              Planifica la logística veredal para abastecer hogares, comerciantes y colegios.
-            </p>
-          </div>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-add-route">
-            + Programar Nueva Ruta
-          </button>
+    <!-- PRODUCTOS -->
+    <section class="panel-section" id="section-productos">
+      <div class="panel-head-row">
+        <div>
+          <h1>Productos</h1>
+          <p>Los cambios se reflejan al instante en la tienda pública.</p>
         </div>
-
-        <div class="routes-grid" id="routes-container">
-          <!-- Renderizado dinámicamente con JS -->
+        <div class="panel-actions">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-new-product">+ Nuevo producto</button>
         </div>
       </div>
+
+      <div class="product-grid" id="products-grid"></div>
     </section>
 
-    <!-- ====================================================================
-         SECCIÓN 4: BUZÓN DE QUEJAS Y SUGERENCIAS (PQRS)
-         ==================================================================== -->
-    <section id="tab-pqrs" class="admin-tab-content" style="display: none;">
-      <div class="admin-card-panel">
-        <div class="panel-head">
-          <div>
-            <h3>Buzón de Atención al Cliente (PQRS)</h3>
-            <p style="margin: 0; color: var(--ink-soft); font-size: 13.5px;">
-              Revisa quejas, sugerencias y felicitaciones enviadas desde el sitio web.
-            </p>
+    <!-- RUTAS -->
+    <section class="panel-section" id="section-rutas">
+      <div class="panel-head-row">
+        <div>
+          <h1>Rutas de reparto</h1>
+          <p>Zonas, horarios y responsable de cada ruta.</p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-new-route">+ Nueva ruta</button>
+        </div>
+      </div>
+
+      <div class="driver-grid" id="routes-grid"></div>
+    </section>
+
+    <!-- PQRS -->
+    <section class="panel-section" id="section-pqrs">
+      <div class="panel-head-row">
+        <div>
+          <h1>Quejas y sugerencias</h1>
+          <p>Mensajes enviados desde la tienda pública.</p>
+        </div>
+        <div class="panel-actions">
+          <div class="seg" id="pqrs-filter">
+            <button type="button" class="active" data-status="todas">Todas</button>
+            <button type="button" data-status="Nueva">Nuevas</button>
+            <button type="button" data-status="Atendida">Atendidas</button>
           </div>
         </div>
+      </div>
 
-        <div class="admin-table-wrap">
-          <table class="admin-table" id="pqrs-table">
+      <div class="panel-card">
+        <div class="table-wrap" style="overflow-x:auto">
+          <table class="table-min">
             <thead>
               <tr>
                 <th>Tipo</th>
@@ -189,191 +233,74 @@
                 <th>Mensaje</th>
                 <th>Fecha</th>
                 <th>Estado</th>
-                <th style="text-align: right;">Acción</th>
+                <th style="text-align:right">Acciones</th>
               </tr>
             </thead>
-            <tbody id="pqrs-table-body">
-              <!-- Renderizado dinámicamente con JS -->
-            </tbody>
+            <tbody id="pqrs-body"></tbody>
           </table>
         </div>
       </div>
     </section>
+
+    <!-- MI CUENTA -->
+    <section class="panel-section" id="section-cuenta">
+      <div class="panel-head-row">
+        <div>
+          <h1>Mi cuenta</h1>
+          <p>Estos son tus datos de acceso. Cambia la contraseña inicial por una tuya.</p>
+        </div>
+      </div>
+
+      <div class="account-grid">
+        <div class="panel-card">
+          <div class="panel-card-head">
+            <div>
+              <h2>Datos del administrador</h2>
+              <p>Así entras al panel</p>
+            </div>
+          </div>
+          <div id="account-info"></div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-card-head">
+            <div>
+              <h2>Cambiar contraseña</h2>
+              <p>Mínimo 4 caracteres</p>
+            </div>
+          </div>
+          <form id="account-password-form" class="form-grid">
+            <div class="form-field full">
+              <label for="acc-current">Contraseña actual</label>
+              <input type="password" id="acc-current" autocomplete="current-password" required>
+            </div>
+            <div class="form-field full">
+              <label for="acc-new">Contraseña nueva</label>
+              <input type="password" id="acc-new" autocomplete="new-password" required minlength="4">
+            </div>
+            <div class="form-field full">
+              <label for="acc-repeat">Repetir contraseña nueva</label>
+              <input type="password" id="acc-repeat" autocomplete="new-password" required minlength="4">
+            </div>
+            <div class="full">
+              <button type="submit" class="btn btn-primary" style="width:100%">Guardar contraseña</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
   </main>
 
-  <!-- ====================================================================
-       MODAL: CREAR / EDITAR PRODUCTO
-       ==================================================================== -->
-  <div class="admin-modal-overlay" id="product-modal" style="display: none;">
-    <div class="admin-modal-card">
-      <div class="panel-head" style="margin-bottom: 16px;">
-        <h3 id="product-modal-title">Editar Producto</h3>
-        <button type="button" class="btn-text" id="btn-close-product-modal" style="font-size: 20px;">✕</button>
-      </div>
-
-      <form id="product-form">
-        <input type="hidden" id="prod-id">
-        <div class="admin-form-grid">
-          <div class="admin-form-group full">
-            <label for="prod-name">Nombre del Producto *</label>
-            <input type="text" id="prod-name" placeholder="Ej. Paca de agua 250 ml" required>
-          </div>
-
-          <div class="admin-form-group">
-            <label for="prod-price">Precio Unitario (COP) *</label>
-            <input type="number" id="prod-price" min="500" step="500" placeholder="4000" required>
-          </div>
-
-          <div class="admin-form-group">
-            <label for="prod-unit">Etiqueta de Precio *</label>
-            <input type="text" id="prod-unit" placeholder="Ej. / paca completa o / bolsa de 3L" required>
-          </div>
-
-          <div class="admin-form-group">
-            <label for="prod-badge">Distintivo / Badge</label>
-            <input type="text" id="prod-badge" placeholder="Ej. Venta por Paca">
-          </div>
-
-          <div class="admin-form-group">
-            <label for="prod-status">Estado del Producto</label>
-            <select id="prod-status">
-              <option value="true">Activo / Disponible</option>
-              <option value="false">Agotado / Inactivo</option>
-            </select>
-          </div>
-
-          <div class="admin-form-group full">
-            <label for="prod-desc">Descripción del Producto</label>
-            <textarea id="prod-desc" rows="3" placeholder="Detalles de la presentación..."></textarea>
-          </div>
-
-          <div class="admin-form-group full">
-            <label for="prod-image">Ruta de la Imagen</label>
-            <input type="text" id="prod-image" placeholder="assets/bolsa-250ml.jpg o assets/bolsa-3l.jpg">
-          </div>
-        </div>
-
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
-          <button type="button" class="btn btn-ghost" id="btn-cancel-product" style="color: var(--ink-soft); border-color: var(--rule);">
-            Cancelar
-          </button>
-          <button type="submit" class="btn btn-primary">
-            Guardar Producto
-          </button>
-        </div>
-      </form>
+  <!-- Contenedor de formularios modales (se llena desde admin.js) -->
+  <div class="ui-dialog-overlay" id="modal-host" style="display:none">
+    <div class="ui-dialog" style="width:min(620px,100%);max-height:90vh;overflow-y:auto">
+      <div id="modal-content"></div>
     </div>
   </div>
 
-  <!-- ====================================================================
-       MODAL: REGISTRAR PEDIDO MANUAL
-       ==================================================================== -->
-  <div class="admin-modal-overlay" id="order-modal" style="display: none;">
-    <div class="admin-modal-card">
-      <div class="panel-head" style="margin-bottom: 16px;">
-        <h3>Registrar Pedido de Cliente</h3>
-        <button type="button" class="btn-text" id="btn-close-order-modal" style="font-size: 20px;">✕</button>
-      </div>
-
-      <form id="manual-order-form">
-        <div class="admin-form-grid">
-          <div class="admin-form-group">
-            <label for="ord-client">Nombre del Cliente *</label>
-            <input type="text" id="ord-client" placeholder="Ej. Tienda Doña Carmen" required>
-          </div>
-
-          <div class="admin-form-group">
-            <label for="ord-phone">Teléfono / WhatsApp *</label>
-            <input type="text" id="ord-phone" placeholder="Ej. 312 456 7890" required>
-          </div>
-
-          <div class="admin-form-group full">
-            <label for="ord-items">Detalle del Pedido *</label>
-            <input type="text" id="ord-items" placeholder="Ej. 3 Pacas 250ml + 2 Bolsas 3L" required>
-          </div>
-
-          <div class="admin-form-group">
-            <label for="ord-total">Total a Cobrar ($ COP) *</label>
-            <input type="number" id="ord-total" min="1000" step="500" placeholder="20000" required>
-          </div>
-
-          <div class="admin-form-group">
-            <label for="ord-status">Estado Inicial</label>
-            <select id="ord-status">
-              <option value="Pendiente">Pendiente</option>
-              <option value="En ruta">En ruta</option>
-              <option value="Finalizado">Finalizado</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
-          <button type="button" class="btn btn-ghost" id="btn-cancel-order" style="color: var(--ink-soft); border-color: var(--rule);">
-            Cancelar
-          </button>
-          <button type="submit" class="btn btn-primary">
-            Crear Pedido
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ====================================================================
-       MODAL: PROGRAMAR RUTA DE ENTREGA
-       ==================================================================== -->
-  <div class="admin-modal-overlay" id="route-modal" style="display: none;">
-    <div class="admin-modal-card">
-      <div class="panel-head" style="margin-bottom: 16px;">
-        <h3>Programar Ruta de Reparto</h3>
-        <button type="button" class="btn-text" id="btn-close-route-modal" style="font-size: 20px;">✕</button>
-      </div>
-
-      <form id="route-form">
-        <div class="admin-form-grid">
-          <div class="admin-form-group full">
-            <label for="route-name">Nombre de la Zona / Sector *</label>
-            <input type="text" id="route-name" placeholder="Ej. Sector La Loma y El Crucero" required>
-          </div>
-
-          <div class="admin-form-group">
-            <label for="route-driver">Repartidor Responsable *</label>
-            <input type="text" id="route-driver" placeholder="Ej. Carlos Gómez" required>
-          </div>
-
-          <div class="admin-form-group">
-            <label for="route-time">Horario Estimado *</label>
-            <input type="text" id="route-time" placeholder="Ej. 2:00 PM - 5:00 PM" required>
-          </div>
-
-          <div class="admin-form-group">
-            <label for="route-status">Estado de la Ruta</label>
-            <select id="route-status">
-              <option value="Programada">Programada</option>
-              <option value="En ruta">En ruta</option>
-              <option value="Completada">Completada</option>
-            </select>
-          </div>
-
-          <div class="admin-form-group full">
-            <label for="route-notes">Observaciones de Entrega</label>
-            <input type="text" id="route-notes" placeholder="Ej. Llevar 15 pacas de 250ml y 8 bolsas 3L">
-          </div>
-        </div>
-
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
-          <button type="button" class="btn btn-ghost" id="btn-cancel-route" style="color: var(--ink-soft); border-color: var(--rule);">
-            Cancelar
-          </button>
-          <button type="submit" class="btn btn-primary">
-            Guardar Ruta
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Scripts del Administrador -->
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/admin.js"></script>
 </body>

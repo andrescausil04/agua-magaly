@@ -445,15 +445,25 @@
         // Al hacer click, registrar pedido en LocalStorage (Admin) y permitir redirección directa al chat de WhatsApp
         waBtn.onclick = function () {
           const orders = getOrders();
+          const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
+          const createdAt = new Date().toISOString();
           const newOrder = {
-            id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
+            id: orderId,
+            code: orderId,
             client: clientName,
             phone: clientPhone,
             address: `${clientAddress} (${clientCity})`,
             items: summaryItems.join(', '),
             total: grandTotal,
+            createdAt: createdAt,
             date: 'Hoy, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'Pendiente'
+            status: 'Pendiente',
+            driverId: null,
+            driverName: '',
+            payment: 'Efectivo',
+            paid: false,
+            notes: '',
+            events: [{ type: 'creado', at: createdAt, by: 'Cliente (web)', note: 'Pedido enviado por WhatsApp' }]
           };
           orders.unshift(newOrder);
           saveOrders(orders);

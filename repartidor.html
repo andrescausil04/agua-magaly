@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0B4F73">
+  <title>Panel del Repartidor — Agua Magaly</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="assets/logo-magaly.png">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/panel.css">
+</head>
+<body class="driver-app" id="driver-page">
+
+  <header class="driver-topbar">
+    <div class="avatar" id="driver-avatar" style="background:rgba(255,255,255,.18)">RP</div>
+    <div style="min-width:0">
+      <h1 id="driver-name">Repartidor</h1>
+      <small id="driver-date">—</small>
+    </div>
+    <div class="top-actions">
+      <button type="button" class="driver-icon-btn" data-view="perfil" title="Mi perfil" aria-label="Mi perfil">👤</button>
+      <button type="button" class="driver-icon-btn" data-logout title="Cerrar sesión" aria-label="Cerrar sesión">⏻</button>
+    </div>
+  </header>
+
+  <main class="driver-wrap">
+
+    <!-- MIS PEDIDOS -->
+    <section id="view-pedidos">
+      <div class="driver-summary" id="driver-summary"></div>
+
+      <div class="seg" id="driver-range" style="margin-bottom:12px">
+        <button type="button" class="active" data-range="activos">Por entregar</button>
+        <button type="button" data-range="hoy">Todo hoy</button>
+      </div>
+
+      <div class="job-list" id="job-list"></div>
+    </section>
+
+    <!-- HISTORIAL -->
+    <section id="view-historial" hidden>
+      <div class="driver-summary" id="history-summary"></div>
+      <div class="job-list" id="history-list"></div>
+    </section>
+
+    <!-- PERFIL -->
+    <section id="view-perfil" hidden>
+      <div class="panel-card">
+        <div class="panel-card-head">
+          <div>
+            <h2>Mis datos</h2>
+            <p>Información de tu cuenta de reparto</p>
+          </div>
+        </div>
+        <div id="profile-info"></div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-card-head">
+          <div>
+            <h2>Cambiar contraseña</h2>
+            <p>Usa una clave que puedas recordar</p>
+          </div>
+        </div>
+        <form id="password-form" class="form-grid">
+          <div class="form-field full">
+            <label for="pass-current">Contraseña actual</label>
+            <input type="password" id="pass-current" autocomplete="current-password" required>
+          </div>
+          <div class="form-field full">
+            <label for="pass-new">Contraseña nueva</label>
+            <input type="password" id="pass-new" autocomplete="new-password" required minlength="4">
+          </div>
+          <div class="form-field full">
+            <label for="pass-repeat">Repetir contraseña nueva</label>
+            <input type="password" id="pass-repeat" autocomplete="new-password" required minlength="4">
+          </div>
+          <div class="full">
+            <button type="submit" class="btn btn-primary" style="width:100%">Guardar contraseña</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="driver-tabbar" aria-label="Navegación del repartidor">
+    <button type="button" class="active" data-view="pedidos">
+      <span class="ico">📦</span> Pedidos
+    </button>
+    <button type="button" data-view="historial">
+      <span class="ico">✅</span> Historial
+    </button>
+    <button type="button" data-view="perfil">
+      <span class="ico">👤</span> Perfil
+    </button>
+  </nav>
+
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/repartidor.js"></script>
+</body>
+</html>

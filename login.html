@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Acceso Administrativo — Agua Magaly</title>
-  
+  <title>Ingresar — Agua Magaly</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,16 +19,16 @@
       <img src="assets/logo-magaly.png" alt="Logo Agua Magaly" width="72" height="72" style="object-fit: contain;">
       <div class="brand">Agua Magaly</div>
       <span style="font-size: 11px; font-weight: 700; color: var(--blue-mid); letter-spacing: 0.08em; text-transform: uppercase;">
-        Portal Administrativo Oficial
+        Administración y Reparto
       </span>
     </div>
 
     <h2>Iniciar sesión</h2>
-    <div class="sub">Ingresa las credenciales autorizadas de la marca</div>
+    <div class="sub">Entra con tu usuario de administrador o de repartidor</div>
 
     <form id="login-form">
       <div class="form-row">
-        <label for="login-user">Usuario del sistema</label>
+        <label for="login-user">Usuario</label>
         <input id="login-user" type="text" placeholder="Ej. admin" autocomplete="username" required autofocus>
       </div>
 
@@ -37,19 +37,29 @@
         <input id="login-pass" type="password" placeholder="••••" autocomplete="current-password" required>
       </div>
 
+      <label for="login-remember" style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:var(--ink-soft);cursor:pointer;">
+        <input id="login-remember" type="checkbox" checked style="width:16px;height:16px;accent-color:var(--blue-mid);">
+        Mantener la sesión abierta en este equipo
+      </label>
+
       <div id="login-error"></div>
 
       <button type="submit" class="btn btn-primary">
-        Ingresar al panel →
+        Ingresar →
       </button>
     </form>
 
+    <div id="login-demo" style="margin-top:20px;padding:12px 14px;border-radius:10px;background:#FFF8EC;border:1px dashed #E7C79A;color:#8A5A16;font-size:12.5px;line-height:1.6;">
+      Cargando accesos de prueba…
+    </div>
+
     <div class="auth-note">
-      <p style="margin-bottom: 8px;">Credenciales autorizadas: Usuario <code>admin</code> · Contraseña <code>1234</code></p>
+      <p style="margin-bottom: 8px;">El administrador gestiona los pedidos y crea el usuario de cada repartidor.</p>
       <a href="index.html">← Volver al sitio web principal</a>
     </div>
   </div>
 
+  <script src="js/store.js"></script>
   <script src="js/auth.js"></script>
 </body>
 </html>
