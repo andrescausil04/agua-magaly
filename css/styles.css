@@ -210,6 +210,79 @@ nav.links a:hover {
   letter-spacing: 0.02em;
 }
 
+/* Botón hamburguesa (solo visible en pantallas pequeñas) */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.nav-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.nav-toggle span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--white);
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.nav-toggle.is-open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.nav-toggle.is-open span:nth-child(2) { opacity: 0; }
+.nav-toggle.is-open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* Menú móvil desplegable */
+.nav-mobile {
+  display: none;
+  background: var(--blue-deep);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 30px rgba(3, 24, 35, 0.28);
+}
+
+.nav-mobile.is-open { display: block; }
+
+.nav-mobile-links {
+  display: flex;
+  flex-direction: column;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 6px 20px 14px;
+}
+
+.nav-mobile-links a {
+  padding: 13px 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-mobile-links a:last-child { border-bottom: 0; }
+
+.nav-mobile-links a:hover { color: var(--sand-hover); }
+
+.nav-mobile-instagram {
+  color: var(--sand) !important;
+  font-weight: 700 !important;
+}
+
+@media (min-width: 901px) {
+  .nav-mobile { display: none !important; }
+}
+
 /* ==========================================================================
    HERO SECTION
    ========================================================================== */
@@ -1180,11 +1253,13 @@ section {
 .quejas-form {
   max-width: 680px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 
 .form-row {
   display: grid;
+  min-width: 0;
   gap: 8px;
 }
 
@@ -1197,6 +1272,8 @@ section {
 .form-row input,
 .form-row select,
 .form-row textarea {
+  width: 100%;
+  min-width: 0;
   font-family: 'Public Sans', sans-serif;
   font-size: 15px;
   padding: 12px 14px;
@@ -1746,6 +1823,13 @@ footer {
    RESPONSIVE DESIGN (TABLET & MÓVIL)
    ========================================================================== */
 @media (max-width: 900px) {
+  .nav-inner {
+    padding: 12px 20px;
+    gap: 14px;
+  }
+  .nav-toggle {
+    display: flex;
+  }
   .hero {
     grid-template-columns: 1fr;
   }
@@ -1814,3 +1898,61 @@ footer {
     padding: 60px 0;
   }
 }
+
+/* Encabezado compacto en celulares */
+@media (max-width: 640px) {
+  .nav-inner {
+    padding: 8px 16px;
+    gap: 10px;
+  }
+  .brand {
+    font-size: 19px;
+    gap: 8px;
+    min-width: 0;
+  }
+  .brand-sub {
+    display: none;
+  }
+  .brand-title {
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .logo-mark {
+    height: 36px;
+  }
+  .nav-cart {
+    padding: 7px 12px;
+    font-size: 13px;
+    gap: 7px;
+  }
+  .nav-toggle {
+    width: 38px;
+    height: 38px;
+  }
+  .nav-mobile-links {
+    padding: 4px 16px 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .nav-inner {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .brand {
+    font-size: 17.5px;
+  }
+  .nav-cart {
+    padding: 7px 10px;
+  }
+  #nav-total {
+    display: none;
+  }
+}
+
+/* Evita que los enlaces con ancla queden ocultos bajo el encabezado fijo */
+section[id],
+div[id="productos"] {
+  scroll-margin-top: 86px;
+}
+

@@ -1509,9 +1509,8 @@
    ========================================================================== */
 @media (max-width: 1100px) {
   .dash-grid { grid-template-columns: 1fr; }
-}
 
-@media (max-width: 900px) {
+  /* La barra lateral pasa a ser una barra superior horizontal */
   .panel-shell {
     grid-template-columns: 1fr;
   }
@@ -1523,9 +1522,10 @@
     height: auto;
     flex-direction: row;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 8px;
+    padding: 8px 12px;
     overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .panel-brand {
@@ -1537,22 +1537,33 @@
 
   .panel-brand span { display: none; }
 
+  .panel-brand img {
+    width: 34px;
+    height: 34px;
+  }
+
   .panel-nav {
     flex-direction: row;
-    gap: 6px;
+    gap: 5px;
     flex: 1;
     overflow-x: auto;
+    overflow-y: hidden;
     padding-bottom: 2px;
+    scrollbar-width: thin;
   }
 
   .panel-nav-btn {
     flex: none;
-    padding: 8px 11px;
+    width: auto;
+    padding: 9px 11px;
+    min-height: 42px;
     white-space: nowrap;
     font-size: 13px;
   }
 
   .panel-nav-btn .nav-label-long { display: none; }
+
+  .panel-nav-btn .nav-ico { font-size: 17px; }
 
   .panel-sidebar-foot {
     margin: 0;
@@ -1563,16 +1574,98 @@
 
   .panel-sidebar-foot .who { display: none; }
 
-  .panel-main { padding: 18px 16px 60px; }
+  .panel-sidebar-foot .avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 12px;
+  }
+
+  .sidebar-logout {
+    min-height: 38px;
+    padding: 8px 12px;
+  }
+
+  .panel-main { padding: 20px 20px 60px; }
 
   .kanban {
-    grid-template-columns: repeat(var(--kanban-cols, 3), minmax(240px, 1fr));
+    grid-template-columns: repeat(var(--kanban-cols, 3), minmax(220px, 1fr));
   }
 
   .panel-head-row h1 { font-size: 22px; }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 680px) {
+  .panel-sidebar {
+    padding: 7px 12px;
+    gap: 10px;
+    overflow: visible;
+  }
+
+  .sidebar-logout {
+    min-height: 40px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .panel-sidebar-foot .avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* La navegación pasa a una barra fija inferior, al alcance del pulgar */
+  .panel-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 80;
+    flex: none;
+    gap: 2px;
+    padding: 5px 5px calc(5px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(180deg, #0B4F73 0%, #08374F 100%);
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 -10px 24px rgba(3, 24, 35, 0.28);
+    overflow: visible;
+  }
+
+  .panel-nav-btn {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+    padding: 6px 2px;
+    min-height: 50px;
+    text-align: center;
+  }
+
+  .panel-nav-btn .nav-ico {
+    width: auto;
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  /* En la barra inferior solo se muestran los contadores urgentes */
+  .panel-nav-btn .nav-count { display: none; }
+
+  .panel-nav-btn .nav-count.is-alert {
+    display: block;
+    position: absolute;
+    top: 2px;
+    right: 1px;
+    margin: 0;
+    min-width: 16px;
+    padding: 0 4px;
+    font-size: 9.5px;
+    line-height: 15px;
+    border-radius: 10px;
+    background: #F97316;
+    color: #fff;
+  }
+
+  .panel-main { padding: 16px 14px calc(86px + env(safe-area-inset-bottom, 0px)); }
+
   .kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -1591,7 +1684,13 @@
 
   .board-toolbar { gap: 8px; }
 
+  .account-grid { grid-template-columns: 1fr; }
+
   .ui-drawer { width: 100%; }
+
+  .ui-dialog { width: calc(100% - 24px); }
+
+  .panel-head-row h1 { font-size: 20px; }
 
   .driver-summary .sum b { font-size: 17px; }
 }

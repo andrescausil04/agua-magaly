@@ -572,4 +572,42 @@
   window.addEventListener('hashchange', checkLoginRoute);
   checkLoginRoute();
 
+  // ==========================================================================
+  // MENÚ DE NAVEGACIÓN MÓVIL
+  // ==========================================================================
+  const navToggle = document.getElementById('nav-toggle');
+  const navMobile = document.getElementById('nav-mobile');
+
+  if (navToggle && navMobile) {
+    const setMobileMenu = (open) => {
+      navMobile.classList.toggle('is-open', open);
+      navToggle.classList.toggle('is-open', open);
+      navToggle.setAttribute('aria-expanded', String(open));
+      navToggle.setAttribute('aria-label', open ? 'Cerrar menú de navegación' : 'Abrir menú de navegación');
+    };
+
+    navToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setMobileMenu(!navMobile.classList.contains('is-open'));
+    });
+
+    navMobile.addEventListener('click', (e) => {
+      if (e.target.closest('a')) setMobileMenu(false);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!navMobile.contains(e.target) && !navToggle.contains(e.target)) {
+        setMobileMenu(false);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setMobileMenu(false);
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 900) setMobileMenu(false);
+    });
+  }
+
 })();
