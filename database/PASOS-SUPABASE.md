@@ -48,22 +48,26 @@ La web no envía correos de confirmación, así que hay que desactivarlo:
 2. Copia y pega todo `database\seed-data.sql`.
 3. **Run**. Debe crear los 2 productos y los ajustes del negocio.
 
-## 6. Crear las cuentas del equipo
+## 6. Crear la cuenta del administrador
 
-En **Authentication** → **Users** → **Add user** → **Create new user**,
-crea estas tres cuentas (marca **Auto Confirm User**):
+En **Authentication** → **Users** → **Add user** → **Create new user**:
 
-| Correo                   | Contraseña temporal |
-| ------------------------ | ------------------- |
-| `admin@aguamagaly.app`   | `Magaly2026`        |
-| `carlos@aguamagaly.app`  | `Magaly2026`        |
-| `andres@aguamagaly.app`  | `Magaly2026`        |
+| Correo                 | Contraseña temporal | Auto Confirm |
+| ---------------------- | ------------------- | ------------ |
+| `admin@aguamagaly.app` | `Magaly2026`        | ✅ Sí        |
 
-> Los usuarios para entrar a la web son `admin`, `carlos` y `andres`.
-> Después de entrar, cada uno puede cambiar su contraseña en **Mi cuenta**.
+> El usuario para entrar a la web es `admin`.
+> Después de entrar, cámbiale la contraseña en **Mi cuenta**.
+>
+> Los repartidores **no** hace falta crearlos aquí: se crean desde el panel,
+> en la sección **Repartidores → Nuevo repartidor**.
 
 Luego, en **SQL Editor** → **+ New query**, pega `database\seed-staff.sql` y
-dale **Run**. Eso crea la ficha de cada persona (rol y nombre).
+dale **Run**. Eso crea la ficha de la cuenta (rol de administrador).
+
+> Si prefieres crear también a Carlos y Andrés aquí, usa
+> `carlos@aguamagaly.app` y `andres@aguamagaly.app` con la misma contraseña
+> temporal y ejecuta `seed-staff.sql` después.
 
 ## 7. Copiar los dos datos de conexión
 
