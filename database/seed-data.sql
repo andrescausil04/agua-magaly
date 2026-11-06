@@ -4,7 +4,10 @@
 -- Ejecuta este archivo UNA vez, después de database/schema.sql.
 -- Deja la tienda con los dos productos reales y los datos del negocio.
 --
--- Usa "on conflict do nothing": si ya existen, NO los sobrescribe.
+-- IMPORTANTE: este archivo es UNA SOLA sentencia (el editor SQL de Supabase
+-- no acepta varias a la vez). Al ejecutarlo, abajo verás las 3 filas creadas.
+--
+-- Es seguro ejecutarlo varias veces: si ya existen, NO sobrescribe los datos.
 -- ============================================================================
 
 insert into public.records (entity, id, data) values
@@ -38,7 +41,8 @@ insert into public.records (entity, id, data) values
   "currency": "COP"
 }'::jsonb)
 
-on conflict (entity, id) do nothing;
-
--- Revisión rápida: deben aparecer 3 filas.
-select entity, id from public.records order by entity, id;
+-- "do update" sin cambiar el contenido: sirve para que la consulta devuelva
+-- las filas aunque ya existieran, sin sobrescribir nada.
+on conflict (entity, id) do update
+  set entity = excluded.entity
+returning entity, id;

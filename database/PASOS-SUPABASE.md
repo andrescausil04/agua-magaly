@@ -47,6 +47,17 @@ La web no envía correos de confirmación, así que hay que desactivarlo:
 1. **SQL Editor** → **+ New query**.
 2. Copia y pega todo `database\seed-data.sql`.
 3. **Run**. Debe crear los 2 productos y los ajustes del negocio.
+4. Abajo, en **Results**, deben aparecer **3 filas**: `products/250`,
+   `products/3L` y `settings/app`.
+
+> ⚠️ El editor SQL de Supabase acepta **una sola sentencia por ejecución**.
+> Si ves el error **“Only singular query allowed”**, es porque se pegó texto
+> de más (o se ejecutó una selección parcial). Solución: borra todo con
+> `Ctrl + A` + `Supr`, pega de nuevo el archivo completo y pulsa **Run** sin
+> seleccionar nada.
+>
+> Estos archivos ya están preparados para funcionar así: cada uno es una sola
+> sentencia y, al ejecutarlo, muestra las filas resultantes.
 
 ## 6. Crear la cuenta del administrador
 
@@ -63,7 +74,8 @@ En **Authentication** → **Users** → **Add user** → **Create new user**:
 > en la sección **Repartidores → Nuevo repartidor**.
 
 Luego, en **SQL Editor** → **+ New query**, pega `database\seed-staff.sql` y
-dale **Run**. Eso crea la ficha de la cuenta (rol de administrador).
+dale **Run**. Eso crea la ficha de la cuenta (rol de administrador) y debe
+mostrar una fila: `admin | Administrador | admin | true`.
 
 > Si prefieres crear también a Carlos y Andrés aquí, usa
 > `carlos@aguamagaly.app` y `andres@aguamagaly.app` con la misma contraseña

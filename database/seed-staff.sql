@@ -10,6 +10,8 @@
 --   carlos@aguamagaly.app → usuario "carlos" (repartidor)
 --   andres@aguamagaly.app → usuario "andres" (repartidor)
 --
+-- IMPORTANTE: este archivo es UNA SOLA sentencia (el editor SQL de Supabase
+-- no acepta varias a la vez). Al ejecutarlo verás una fila por cada cuenta.
 -- Se puede ejecutar varias veces sin duplicar nada.
 -- ============================================================================
 
@@ -37,9 +39,5 @@ where lower(u.email) like '%@aguamagaly.app'
 on conflict (id) do update
   set username = excluded.username,
       name     = excluded.name,
-      role     = excluded.role;
-
--- Revisión rápida: debe mostrar una fila por cada cuenta creada.
-select username, name, role, active
-from public.staff
-order by role, username;
+      role     = excluded.role
+returning username, name, role, active;
