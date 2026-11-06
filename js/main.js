@@ -610,4 +610,27 @@
     });
   }
 
+  // ==========================================================================
+  // ATAJO "VOLVER AL PANEL" (solo si hay una sesión de administrador o reparto)
+  // ==========================================================================
+  const staffReturn = document.getElementById('staff-return');
+  if (staffReturn) {
+    try {
+      const raw = localStorage.getItem('magaly_session');
+      const session = raw ? JSON.parse(raw) : null;
+      const expired = session && session.expiresAt && Date.now() > session.expiresAt;
+      if (session && session.userId && !expired) {
+        const isDriver = session.role === 'driver';
+        staffReturn.href = isDriver ? 'repartidor.html' : 'admin.html';
+        const text = staffReturn.querySelector('.staff-return-text');
+        if (text) text.textContent = isDriver ? 'Mi panel de reparto' : 'Volver al panel';
+        staffReturn.setAttribute('aria-label', isDriver ? 'Volver a mi panel de reparto' : 'Volver al panel de administración');
+        staffReturn.title = isDriver ? 'Volver a mi panel de reparto' : 'Volver al panel de administración';
+        staffReturn.hidden = false;
+      }
+    } catch (err) {
+      /* Si no se puede leer la sesión, el botón permanece oculto. */
+    }
+  }
+
 })();
