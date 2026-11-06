@@ -865,6 +865,19 @@
 
   function openDriverForm(driver) {
     const d = driver || {};
+    const cloud = !!(store && store.isCloud && store.isCloud());
+    const minPass = cloud ? 6 : 4;
+
+    // En la nube, cada persona cambia su propia contraseña desde «Mi cuenta».
+    const passwordField = (cloud && driver)
+      ? '<div class="form-field full"><span class="hint">🔒 La contraseña la cambia el repartidor desde «Mi cuenta» en su panel.</span></div>'
+      : field('f-dpass', driver ? 'Nueva contraseña' : 'Contraseña *', {
+        required: !driver,
+        type: 'text',
+        placeholder: driver ? 'Dejar vacío para no cambiar' : 'Mínimo ' + minPass + ' caracteres',
+        full: true
+      });
+
     const body = '<div class="form-grid">' +
       field('f-dname', 'Nombre completo *', { required: true, full: true, value: d.name || '', placeholder: 'Ej. Carlos Gómez' }) +
       field('f-dusername', 'Usuario de acceso *', {
@@ -872,12 +885,7 @@
         hint: 'Sin espacios ni mayúsculas. Con este usuario entra el repartidor.'
       }) +
       field('f-dphone', 'Teléfono', { value: d.phone || '', placeholder: 'Ej. 305 413 6677' }) +
-      field('f-dpass', driver ? 'Nueva contraseña' : 'Contraseña *', {
-        required: !driver,
-        type: 'text',
-        placeholder: driver ? 'Dejar vacío para no cambiar' : 'Mínimo 4 caracteres',
-        full: true
-      }) +
+      passwordField +
       field('f-dactive', 'Estado', {
         type: 'select',
         options: [
@@ -904,20 +912,46 @@
           return false;
         }
 
-        const pass = form.querySelector('#f-dpass').value;
-        if (!driver && pass.length < 4) {
-          ui.toast('La contraseña debe tener al menos 4 caracteres', 'error');
+        const passInput = form.querySelector('#f-dpass');
+        const pass = passInput ? passInput.value : '';
+        if (!driver && pass.length < minPass) {
+          ui.toast('La contraseña debe tener al menos ' + minPass + ' caracteres', 'error');
           return false;
+        }
+
+        const name = form.querySelector('#f-dname').value.trim();
+        const phone = form.querySelector('#f-dphone').value.trim();
+        const color = form.querySelector('#f-dcolor').value;
+        const active = form.querySelector('#f-dactive').value === 'true';
+
+        // En la nube, crear la cuenta real de acceso (Supabase Auth) + su ficha.
+        if (cloud && !driver) {
+          const created = await store.createStaffAccount({
+            username: username,
+            name: name,
+            phone: phone,
+            password: pass,
+            role: 'driver',
+            color: color,
+            active: active
+          });
+          if (!created.ok) {
+            ui.toast(created.error, 'error');
+            return false;
+          }
+          await reload();
+          ui.toast('Repartidor creado. Ya puede entrar con su usuario.', 'success');
+          return;
         }
 
         const record = {
           id: driver ? driver.id : store.uid('u'),
           role: 'driver',
-          name: form.querySelector('#f-dname').value.trim(),
+          name: name,
           username: username,
-          phone: form.querySelector('#f-dphone').value.trim(),
-          active: form.querySelector('#f-dactive').value === 'true',
-          color: form.querySelector('#f-dcolor').value,
+          phone: phone,
+          active: active,
+          color: color,
           hash: driver ? driver.hash : '',
           createdAt: driver ? driver.createdAt : U.nowIso()
         };
@@ -957,7 +991,7 @@
         '</div>' +
         '<div class="cred-box">' +
           '<span>Usuario: <code>' + ui.esc(d.username) + '</code></span>' +
-          '<span>Clave: la que definiste al crearlo (cámbiala con «Editar»)</span>' +
+          '<span>Clave: la que definiste al crearlo (él puede cambiarla en su panel)</span>' +
         '</div>' +
         '<div class="driver-card-foot">' +
           '<button type="button" class="btn btn-ghost btn-sm" data-edit-driver="' + ui.esc(d.id) + '" style="color:var(--blue-deep);border-color:var(--rule)">Editar</button>' +
@@ -991,17 +1025,26 @@
       btn.addEventListener('click', async () => {
         const d = state.users.find(u => u.id === btn.dataset.delDriver);
         const assigned = state.orders.filter(o => o.driverId === d.id && (o.status === STATUS.pendiente || o.status === STATUS.enruta));
+        const cloud = !!(store && store.isCloud && store.isCloud());
         const ok = await ui.confirm({
-          title: 'Eliminar repartidor',
-          message: assigned.length
+          title: cloud ? 'Desactivar repartidor' : 'Eliminar repartidor',
+          message: (assigned.length
             ? d.name + ' tiene ' + assigned.length + ' pedido(s) activo(s). Quedarán sin asignar.'
-            : 'Se eliminará la cuenta de ' + d.name + '.',
-          confirmText: 'Eliminar',
+            : (cloud ? 'Se desactivará el acceso de ' + d.name + '.' : 'Se eliminará la cuenta de ' + d.name + '.')) +
+            (cloud ? ' Podrás reactivarlo cuando quieras con «Editar».' : ''),
+          confirmText: cloud ? 'Desactivar' : 'Eliminar',
           danger: true
         });
         if (!ok) return;
         for (const order of assigned) {
           await store.upsert('orders', Object.assign({}, order, { driverId: null, driverName: '' }));
+        }
+        if (cloud) {
+          // No se borra la cuenta de acceso: se desactiva para poder reactivarla.
+          await store.upsert('users', Object.assign({}, d, { active: false }));
+          await reload();
+          ui.toast('Cuenta desactivada. Puedes reactivarla con «Editar».', 'success');
+          return;
         }
         await store.remove('users', d.id);
         await reload();

@@ -9,11 +9,28 @@
   // Teléfono oficial de atención de Agua Magaly (Nuevo número: 3054136677)
   const WHATSAPP_NUMBER = '573054136677';
 
+  // Capa de datos compartida (nube o navegador)
+  const store = window.MagalyStore;
+
   const STORAGE_KEYS = {
     PRODUCTS: 'magaly_products',
     ORDERS: 'magaly_orders',
     PQRS: 'magaly_pqrs'
   };
+
+  /**
+   * Guarda un registro en la base de datos en la nube, si está configurada.
+   * Si no hay nube, no hace nada (el guardado local ya ocurrió).
+   */
+  function pushCloud(entity, record) {
+    if (!store) return;
+    store.ready()
+      .then(() => {
+        if (!store.isCloud()) return null;
+        return store.upsert(entity, record);
+      })
+      .catch(err => console.warn('[tienda] no se pudo guardar en la nube:', err));
+  }
 
   // Productos predeterminados
   const DEFAULT_PRODUCTS = [
@@ -467,6 +484,7 @@
           };
           orders.unshift(newOrder);
           saveOrders(orders);
+          pushCloud('orders', newOrder);
           // El navegador abre directWaUrl en nueva pestaña de WhatsApp directamente
         };
       }
@@ -503,6 +521,22 @@
   renderCatalog();
   renderCart();
 
+  // Si hay base de datos en la nube, trae el catálogo real (precios y fotos)
+  if (store) {
+    store.ready()
+      .then(() => {
+        if (!store.isCloud()) return null;
+        return store.list('products');
+      })
+      .then(products => {
+        if (!Array.isArray(products) || !products.length) return;
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+        renderCatalog();
+        renderCart();
+      })
+      .catch(err => console.warn('[tienda] no se pudo cargar el catálogo:', err));
+  }
+
   // ==========================================================================
   // FORMULARIO DE QUEJAS Y SUGERENCIAS (PQRS)
   // ==========================================================================
@@ -535,6 +569,7 @@
         status: 'Nueva'
       });
       savePQRS(pqrsList);
+      pushCloud('pqrs', pqrsList[0]);
 
       const pqrsLines = [
         `📋 *NUEVA SOLICITUD DE ${tipo.toUpperCase()} — AGUA MAGALY*`,

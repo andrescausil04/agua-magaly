@@ -1,20 +1,40 @@
 /**
  * AGUA MAGALY — CAPA DE DATOS (STORE)
  * ---------------------------------------------------------------------------
- * Toda la aplicación habla SOLO con este módulo. Hoy persiste en localStorage,
- * pero la API es asíncrona y está aislada, de modo que conectar Supabase más
- * adelante consiste en reemplazar `LocalAdapter` por `SupabaseAdapter`
- * sin tocar el panel de administración ni el del repartidor.
+ * Toda la aplicación habla SOLO con este módulo.
+ *
+ * Tiene dos modos:
+ *   • NUBE (Supabase): si js/config.js tiene supabaseUrl + supabaseAnonKey.
+ *     Los pedidos de cualquier celular llegan al panel en tiempo real.
+ *   • LOCAL: si no hay configuración, guarda en el navegador como antes.
  *
  *   MagalyStore.ready()                  -> espera la inicialización
  *   await MagalyStore.list('orders')     -> array de registros
  *   await MagalyStore.upsert('orders', o)-> crea o actualiza (por id)
  *   await MagalyStore.remove('orders', id)
  *   MagalyStore.subscribe(fn)            -> se dispara ante cualquier cambio
+ *
+ *   MagalyStore.isCloud()                -> true si está conectado a Supabase
+ *   MagalyStore.signIn(email, pass)      -> inicio de sesión real
+ *   MagalyStore.signOut()
+ *   MagalyStore.profile()                -> ficha del usuario con sesión
+ *   MagalyStore.updatePassword(actual, nueva)
+ *   MagalyStore.createStaffAccount(datos) -> crea cuenta de repartidor
  */
 
 window.MagalyStore = (function () {
   'use strict';
+
+  // ==========================================================================
+  // CONFIGURACIÓN
+  // ==========================================================================
+  const CONFIG = window.MAGALY_CONFIG || {};
+  const CLOUD_CONFIGURED = !!(CONFIG.supabaseUrl && CONFIG.supabaseAnonKey);
+  const USERNAME_DOMAIN = CONFIG.usernameDomain || 'aguamagaly.app';
+  const SDK_URLS = [
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js'
+  ];
 
   // ==========================================================================
   // CLAVES DE ALMACENAMIENTO
@@ -125,7 +145,7 @@ window.MagalyStore = (function () {
   }
 
   // ==========================================================================
-  // ADAPTADOR LOCAL (reemplazable por Supabase)
+  // ADAPTADOR LOCAL
   // ==========================================================================
   const LocalAdapter = {
     read(key) {
@@ -275,6 +295,21 @@ window.MagalyStore = (function () {
     };
   }
 
+  // La tabla `staff` usa snake_case; la app usa camelCase.
+  function normalizeStaff(raw) {
+    return {
+      id: raw.id,
+      role: raw.role === 'admin' ? 'admin' : 'driver',
+      name: raw.name || 'Sin nombre',
+      username: (raw.username || '').toLowerCase(),
+      hash: '',
+      phone: raw.phone || '',
+      active: raw.active !== false,
+      color: raw.color || '#1C7FA8',
+      createdAt: raw.created_at || nowIso()
+    };
+  }
+
   function normalizeRoute(raw) {
     return {
       id: raw.id || uid('R'),
@@ -287,7 +322,7 @@ window.MagalyStore = (function () {
   }
 
   // ==========================================================================
-  // HASH DE CONTRASEÑA (simbólico: es cliente, no reemplaza un backend)
+  // HASH DE CONTRASEÑA (solo modo local)
   // ==========================================================================
   async function hashPassword(plain) {
     const value = 'magaly::' + String(plain || '');
@@ -316,6 +351,85 @@ window.MagalyStore = (function () {
   function subscribe(fn) {
     listeners.add(fn);
     return () => listeners.delete(fn);
+  }
+
+  // ==========================================================================
+  // CONEXIÓN A SUPABASE
+  // ==========================================================================
+  let sdk = null;
+  let sb = null;
+  let cloudActive = false;
+
+  function loadSdk() {
+    if (window.supabase && window.supabase.createClient) return Promise.resolve(window.supabase);
+    return new Promise((resolve, reject) => {
+      let index = 0;
+      const tryNext = () => {
+        if (index >= SDK_URLS.length) {
+          reject(new Error('No se pudo cargar la librería de Supabase.'));
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = SDK_URLS[index++];
+        script.async = true;
+        script.onload = () => {
+          if (window.supabase && window.supabase.createClient) resolve(window.supabase);
+          else tryNext();
+        };
+        script.onerror = tryNext;
+        document.head.appendChild(script);
+      };
+      tryNext();
+    });
+  }
+
+  function setRealtimeAuth(token) {
+    if (!sb || !sb.realtime || typeof sb.realtime.setAuth !== 'function') return;
+    try { sb.realtime.setAuth(token || null); } catch (err) { /* opcional */ }
+  }
+
+  function startRealtime() {
+    if (!sb) return;
+    try {
+      sb.channel('magaly-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'records' }, payload => {
+          const row = (payload && payload.new && payload.new.entity) ? payload.new : ((payload && payload.old) || {});
+          notify(row.entity || 'orders');
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, () => {
+          notify('users');
+        })
+        .subscribe();
+    } catch (err) {
+      console.warn('[store] no se pudo activar el tiempo real', err);
+    }
+  }
+
+  async function initCloud() {
+    sdk = await loadSdk();
+    sb = sdk.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+        storageKey: 'magaly_auth'
+      }
+    });
+
+    try {
+      const current = await sb.auth.getSession();
+      if (current && current.data && current.data.session) {
+        setRealtimeAuth(current.data.session.access_token);
+      }
+    } catch (err) { /* sin sesión todavía */ }
+
+    // Mantiene el canal de tiempo real con el token del usuario conectado.
+    sb.auth.onAuthStateChange((event, session) => {
+      setRealtimeAuth(session ? session.access_token : null);
+    });
+
+    startRealtime();
+    cloudActive = true;
   }
 
   // ==========================================================================
@@ -385,16 +499,55 @@ window.MagalyStore = (function () {
   }
 
   function ready() {
-    if (!readyPromise) readyPromise = seed();
+    if (!readyPromise) {
+      readyPromise = (async () => {
+        if (CLOUD_CONFIGURED) {
+          try {
+            await initCloud();
+            return;
+          } catch (err) {
+            console.error('[store] no se pudo conectar a Supabase; se usa el modo local.', err);
+            cloudActive = false;
+            sb = null;
+          }
+        }
+        await seed();
+      })();
+    }
     return readyPromise;
   }
 
   // ==========================================================================
-  // API PÚBLICA
+  // LECTURA
   // ==========================================================================
+  async function cloudList(entity) {
+    if (entity === 'users') {
+      const { data, error } = await sb.from('staff').select('*').order('username', { ascending: true });
+      if (error) throw error;
+      return (data || []).map(normalizeStaff);
+    }
+
+    if (entity === 'settings') {
+      const { data, error } = await sb.from('records').select('data').eq('entity', 'settings').eq('id', 'app').maybeSingle();
+      if (error) throw error;
+      return Object.assign({}, SEED.settings, (data && data.data) || {});
+    }
+
+    const { data, error } = await sb.from('records').select('data').eq('entity', entity);
+    if (error) throw error;
+
+    const rows = (data || []).map(r => r && r.data).filter(Boolean);
+    if (entity === 'orders') return sortOrders(rows.map(normalizeOrder));
+    if (entity === 'routes') return rows.map(normalizeRoute);
+    return rows;
+  }
+
   async function list(entity) {
     await ready();
     if (!ENTITY_SET.has(entity)) throw new Error('Entidad desconocida: ' + entity);
+
+    if (cloudActive) return cloudList(entity);
+
     const data = LocalAdapter.read(KEYS[entity]);
     if (entity === 'settings') return Object.assign({}, SEED.settings, data || {});
     if (!Array.isArray(data)) return [];
@@ -404,37 +557,261 @@ window.MagalyStore = (function () {
     return data;
   }
 
+  // ==========================================================================
+  // ESCRITURA
+  // ==========================================================================
+  async function hasSession() {
+    if (!sb) return false;
+    try {
+      const { data } = await sb.auth.getSession();
+      return !!(data && data.session);
+    } catch (err) {
+      return false;
+    }
+  }
+
   async function saveAll(entity, items) {
     await ready();
-    LocalAdapter.write(KEYS[entity], items);
-    notify(entity);
+    if (!cloudActive) {
+      LocalAdapter.write(KEYS[entity], items);
+      notify(entity);
+      return items;
+    }
+    for (const item of items) await upsert(entity, item);
     return items;
   }
 
   async function upsert(entity, record) {
     await ready();
+
+    if (!cloudActive) {
+      if (entity === 'settings') {
+        const merged = Object.assign({}, await list('settings'), record);
+        LocalAdapter.write(KEYS.settings, merged);
+        notify('settings');
+        return merged;
+      }
+      const items = await list(entity);
+      const idx = items.findIndex(item => item.id === record.id);
+      if (idx >= 0) items[idx] = Object.assign({}, items[idx], record);
+      else items.unshift(record);
+      await saveAll(entity, items);
+      return record;
+    }
+
+    // ---- NUBE ----
     if (entity === 'settings') {
       const merged = Object.assign({}, await list('settings'), record);
-      LocalAdapter.write(KEYS.settings, merged);
+      const { error } = await sb.from('records').upsert(
+        { entity: 'settings', id: 'app', data: merged },
+        { onConflict: 'entity,id' }
+      );
+      if (error) throw error;
       notify('settings');
       return merged;
     }
-    const items = await list(entity);
-    const idx = items.findIndex(item => item.id === record.id);
-    if (idx >= 0) items[idx] = Object.assign({}, items[idx], record);
-    else items.unshift(record);
-    await saveAll(entity, items);
+
+    if (entity === 'users') {
+      const row = {
+        username: record.username,
+        name: record.name,
+        phone: record.phone || '',
+        role: record.role === 'admin' ? 'admin' : 'driver',
+        color: record.color || '#1C7FA8',
+        active: record.active !== false
+      };
+      const { error } = await sb.from('staff').update(row).eq('id', record.id);
+      if (error) throw error;
+      notify('users');
+      return record;
+    }
+
+    const row = { entity: entity, id: record.id, data: record };
+
+    // El público puede CREAR pedidos y PQRS; el equipo puede editar.
+    if (entity === 'orders' || entity === 'pqrs') {
+      const signedIn = await hasSession();
+      const query = signedIn
+        ? sb.from('records').upsert(row, { onConflict: 'entity,id' })
+        : sb.from('records').insert(row);
+      const { error } = await query;
+      if (error) throw error;
+      notify(entity);
+      return record;
+    }
+
+    const { error } = await sb.from('records').upsert(row, { onConflict: 'entity,id' });
+    if (error) throw error;
+    notify(entity);
     return record;
   }
 
   async function remove(entity, id) {
     await ready();
-    const items = (await list(entity)).filter(item => item.id !== id);
-    await saveAll(entity, items);
+
+    if (!cloudActive) {
+      const items = (await list(entity)).filter(item => item.id !== id);
+      await saveAll(entity, items);
+      return true;
+    }
+
+    if (entity === 'users') {
+      const { error } = await sb.from('staff').delete().eq('id', id);
+      if (error) throw error;
+      notify('users');
+      return true;
+    }
+
+    const { error } = await sb.from('records').delete().eq('entity', entity).eq('id', id);
+    if (error) throw error;
+    notify(entity);
     return true;
   }
 
   const ENTITY_SET = new Set(ENTITIES);
+
+  // ==========================================================================
+  // AUTENTICACIÓN EN LA NUBE
+  // ==========================================================================
+  function emailFor(username) {
+    const value = String(username || '').trim().toLowerCase();
+    if (!value) return '';
+    if (value.indexOf('@') >= 0) return value;
+    return value + '@' + USERNAME_DOMAIN;
+  }
+
+  function friendlyAuthError(message) {
+    const text = String(message || '');
+    if (/invalid login credentials/i.test(text)) return 'Usuario o contraseña incorrectos.';
+    if (/email not confirmed/i.test(text)) return 'La cuenta aún no está confirmada. Pide al administrador que la active.';
+    if (/user already registered/i.test(text)) return 'Ese usuario ya existe.';
+    if (/password should be at least/i.test(text)) return 'La contraseña debe tener al menos 6 caracteres.';
+    if (/rate limit|too many/i.test(text)) return 'Demasiados intentos. Espera un minuto e inténtalo de nuevo.';
+    return text || 'No se pudo completar la operación.';
+  }
+
+  async function signIn(email, password) {
+    await ready();
+    if (!cloudActive) return { data: null, error: { message: 'Sin conexión a la nube.' } };
+    return sb.auth.signInWithPassword({ email: email, password: password });
+  }
+
+  async function signOut() {
+    await ready();
+    if (!cloudActive) return;
+    try { await sb.auth.signOut(); } catch (err) { /* ignora */ }
+  }
+
+  async function profile() {
+    await ready();
+    if (!cloudActive) return null;
+    let session = null;
+    try {
+      const res = await sb.auth.getSession();
+      session = res && res.data && res.data.session;
+    } catch (err) {
+      return null;
+    }
+    if (!session) return null;
+
+    const { data, error } = await sb.from('staff').select('*').eq('id', session.user.id).maybeSingle();
+    if (error) {
+      console.warn('[store] no se pudo leer la ficha del usuario', error);
+      return null;
+    }
+    return data ? normalizeStaff(data) : null;
+  }
+
+  async function updatePassword(currentPass, newPass) {
+    await ready();
+    if (!cloudActive) return { ok: false, error: 'Sin conexión a la nube.' };
+
+    const me = await profile();
+    if (!me) return { ok: false, error: 'Tu sesión expiró. Vuelve a entrar.' };
+    if (String(newPass || '').length < 6) {
+      return { ok: false, error: 'La nueva contraseña debe tener al menos 6 caracteres.' };
+    }
+
+    const check = await sb.auth.signInWithPassword({
+      email: emailFor(me.username),
+      password: String(currentPass || '')
+    });
+    if (check.error) return { ok: false, error: 'La contraseña actual no es correcta.' };
+
+    const { error } = await sb.auth.updateUser({ password: String(newPass) });
+    if (error) return { ok: false, error: friendlyAuthError(error.message) };
+    return { ok: true };
+  }
+
+  /**
+   * Crea la cuenta de acceso de un repartidor y su ficha en `staff`.
+   * Usa un cliente temporal para no cerrar la sesión del administrador.
+   */
+  async function createStaffAccount(input) {
+    await ready();
+    if (!cloudActive) return { ok: false, error: 'Sin conexión a la nube.' };
+
+    const username = String(input.username || '').trim().toLowerCase();
+    if (!/^[a-z0-9._-]{3,}$/.test(username)) {
+      return { ok: false, error: 'El usuario debe tener al menos 3 letras o números, sin espacios.' };
+    }
+    const password = String(input.password || '');
+    if (password.length < 6) {
+      return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres.' };
+    }
+
+    let temp = null;
+    try {
+      temp = sdk.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+          storageKey: 'magaly_setup_temp'
+        }
+      });
+    } catch (err) {
+      return { ok: false, error: 'No se pudo preparar la creación de la cuenta.' };
+    }
+
+    const { data, error } = await temp.auth.signUp({
+      email: emailFor(username),
+      password: password
+    });
+
+    if (error) return { ok: false, error: friendlyAuthError(error.message) };
+
+    const user = data && data.user;
+    if (!user || !user.id) {
+      return { ok: false, error: 'No se pudo crear la cuenta de acceso.' };
+    }
+    if (Array.isArray(user.identities) && user.identities.length === 0) {
+      return { ok: false, error: 'Ese usuario ya existe. Prueba con otro.' };
+    }
+
+    try { await temp.auth.signOut(); } catch (err) { /* ignora */ }
+
+    const row = {
+      id: user.id,
+      username: username,
+      name: input.name || username,
+      phone: input.phone || '',
+      role: input.role === 'admin' ? 'admin' : 'driver',
+      color: input.color || '#1C7FA8',
+      active: input.active !== false
+    };
+
+    const { error: insertError } = await sb.from('staff').insert(row);
+    if (insertError) {
+      return {
+        ok: false,
+        error: 'La cuenta se creó, pero falta habilitarla. Inténtalo de nuevo o avísame.'
+      };
+    }
+
+    notify('users');
+    return { ok: true, id: user.id };
+  }
 
   // Exporta una colección a CSV y la descarga
   function exportCsv(entity, rows) {
@@ -484,6 +861,15 @@ window.MagalyStore = (function () {
     hashPassword,
     exportCsv,
     uid,
+    isCloud: () => cloudActive,
+    cloudConfigured: CLOUD_CONFIGURED,
+    emailFor,
+    signIn,
+    signOut,
+    profile,
+    updatePassword,
+    createStaffAccount,
+    setRealtimeAuth,
     // Helpers de formato compartidos por los paneles
     utils: {
       uid,

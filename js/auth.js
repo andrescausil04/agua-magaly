@@ -2,12 +2,11 @@
  * AGUA MAGALY — AUTENTICACIÓN CON ROLES
  * ---------------------------------------------------------------------------
  * Roles: 'admin' (panel completo) y 'driver' (panel del repartidor).
- * Las credenciales viven en MagalyStore ('users') con la contraseña hasheada.
  *
- * Nota honesta: al ser una app sin servidor, esto controla la navegación y
- * separa roles, pero NO protege los datos frente a alguien con acceso a la
- * consola del navegador. Cuando conectes Supabase, la autenticación real se
- * resuelve en el backend.
+ * Dos modos, igual que MagalyStore:
+ *   • NUBE: la contraseña la verifica Supabase (seguro). El usuario "admin"
+ *     inicia sesión con admin@aguamagaly.app.
+ *   • LOCAL: credenciales guardadas en el navegador (modo de respaldo).
  */
 
 window.MagalyAuth = (function () {
@@ -63,7 +62,12 @@ window.MagalyAuth = (function () {
 
   function logout() {
     localStorage.removeItem(SESSION_KEY);
-    window.location.href = pathTo('login.html');
+    const goLogin = () => { window.location.href = pathTo('login.html'); };
+    if (store() && store().isCloud && store().isCloud()) {
+      store().signOut().then(goLogin).catch(goLogin);
+      return;
+    }
+    goLogin();
   }
 
   function homeFor(role) {
@@ -81,6 +85,38 @@ window.MagalyAuth = (function () {
       return { ok: false, error: 'Escribe tu usuario y contraseña.' };
     }
 
+    // ---- NUBE: Supabase verifica la contraseña ----
+    if (store().isCloud()) {
+      const attempt = await store().signIn(store().emailFor(username), password);
+      if (attempt.error) {
+        const msg = String(attempt.error.message || '');
+        if (/invalid login credentials/i.test(msg)) {
+          return { ok: false, error: 'Usuario o contraseña incorrectos. Verifica e intenta de nuevo.' };
+        }
+        if (/email not confirmed/i.test(msg)) {
+          return { ok: false, error: 'Esta cuenta aún no está confirmada. Pide al administrador que la active.' };
+        }
+        return { ok: false, error: 'No se pudo entrar: ' + msg };
+      }
+
+      const me = await store().profile();
+      if (!me) {
+        await store().signOut();
+        return { ok: false, error: 'Esta cuenta no tiene acceso al panel. Contacta al administrador.' };
+      }
+      if (!me.active) {
+        await store().signOut();
+        return { ok: false, error: 'Esta cuenta está desactivada. Contacta al administrador.' };
+      }
+
+      if (attempt.data && attempt.data.session) {
+        store().setRealtimeAuth(attempt.data.session.access_token);
+      }
+      writeSession(me, remember);
+      return { ok: true, user: me, redirect: homeFor(me.role) };
+    }
+
+    // ---- LOCAL ----
     const users = await store().list('users');
     const user = users.find(u => u.username === username);
 
@@ -104,6 +140,18 @@ window.MagalyAuth = (function () {
   // Guardias de página
   // ---------------------------------------------------------------------------
   async function currentUser() {
+    if (store() && store().isCloud && store().isCloud()) {
+      const me = await store().profile();
+      if (!me || !me.active) {
+        localStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+      // Refresca el espejo local por si cambió el nombre o el rol.
+      const mirror = readSession();
+      if (mirror) writeSession(me, true);
+      return me;
+    }
+
     const session = readSession();
     if (!session) return null;
     const users = await store().list('users');
@@ -136,6 +184,10 @@ window.MagalyAuth = (function () {
    * Cambia la contraseña del usuario indicado verificando la actual.
    */
   async function changePassword(userId, currentPass, newPass) {
+    if (store() && store().isCloud && store().isCloud()) {
+      return store().updatePassword(currentPass, newPass);
+    }
+
     const users = await store().list('users');
     const user = users.find(u => u.id === userId);
     if (!user) return { ok: false, error: 'Usuario no encontrado.' };
