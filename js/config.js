@@ -14,8 +14,8 @@
  * (guardando los pedidos solo en el navegador de cada equipo).
  */
 window.MAGALY_CONFIG = {
-  supabaseUrl: '',
-  supabaseAnonKey: '',
+  supabaseUrl: 'https://glppntnfoxognhqueuoc.supabase.co',
+  supabaseAnonKey: 'sb_publishable_jBsi_XNVq9hvAEp5yPMPGQ_CakRW9Tk',
 
   // El usuario "admin" inicia sesión con admin@aguamagaly.app
   usernameDomain: 'aguamagaly.app'
