@@ -180,6 +180,7 @@ Cuando esté desplegada:
 | La web no carga el login | Sin internet o Supabase caído | Es intencional: no se permite el modo local con credenciales de prueba |
 | Un producto muestra texto raro | El campo traía HTML | Ya se escapa; si persiste, revisa el dato en Supabase |
 | La consola muestra un error de CSP | Se añadió un script o fuente externa | Añade el dominio a la CSP de los HTML o aloja el recurso en el sitio |
+| Al ejecutar el SQL sale “Unterminated dollar-quoted” | Se copió una versión antigua del archivo (con comillas dollar anidadas) | Vuelve a copiar `database/security-hardening.sql` actualizado y ejecútalo completo |
 
 ---
 
