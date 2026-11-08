@@ -109,6 +109,19 @@ Abre la web y prueba:
 2. Desde otro celular, haz un pedido en la tienda.
 3. En el panel debe aparecer el pedido **sin recargar** (tiempo real).
 
+## 9. Endurecer la seguridad (obligatorio)
+
+Después de que todo funcione, ejecuta una vez
+`database\security-hardening.sql` en el **SQL Editor**. Ese archivo:
+
+- Hace que el repartidor solo vea y actualice **sus** pedidos.
+- Impide que un pedido enviado desde la web traiga estado, repartidor o total
+  inventados.
+- Cierra la política que permitía crear fichas de personal sin ser admin.
+
+Los pasos completos (Edge Function, contraseñas, MFA, copias de seguridad)
+están en **`database\SEGURIDAD.md`**.
+
 ---
 
 ## Si algo falla
