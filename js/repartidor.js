@@ -16,7 +16,9 @@
     driver: null,
     orders: [],
     view: 'pedidos',
-    range: 'activos'
+    range: 'activos',
+    seenReady: false,   // en la primera carga no avisamos de lo que ya existía
+    seen: new Set()     // pedidos que el repartidor ya conoce
   };
 
   // ==========================================================================
@@ -35,6 +37,7 @@
 
     bindNavigation();
     bindPasswordForm();
+    bindNotifications();
     await reload();
 
     setInterval(reload, 10000);
@@ -44,14 +47,124 @@
   async function reload() {
     const orders = await store.list('orders');
     state.orders = orders.filter(o => o.driverId === state.driver.id);
+    checkNewOrders();
     render();
   }
 
   function render() {
     renderSummary();
+    renderRoute();
     renderJobs();
     renderHistory();
     renderProfile();
+  }
+
+  // ==========================================================================
+  // AVISO DE PEDIDO NUEVO (sonido + notificación)
+  // ==========================================================================
+  function bindNotifications() {
+    const banner = document.getElementById('notif-banner');
+    const btn = document.getElementById('enable-notif');
+    if (!banner || !btn) return;
+
+    const supported = typeof window.Notification !== 'undefined';
+
+    const update = () => {
+      const needsPermission = supported && window.Notification.permission === 'default';
+      banner.hidden = !needsPermission;
+    };
+
+    btn.addEventListener('click', async () => {
+      if (!supported) return;
+      try { await window.Notification.requestPermission(); } catch (err) { /* ignora */ }
+      update();
+      if (window.Notification.permission === 'granted') {
+        playChime();
+        ui.toast('Avisos activados. Te avisaremos cuando te asignen un pedido.', 'success');
+      } else if (window.Notification.permission === 'denied') {
+        ui.toast('Los avisos están bloqueados en este navegador.', 'warn');
+      }
+    });
+
+    update();
+  }
+
+  function checkNewOrders() {
+    const active = state.orders.filter(o => o.status === STATUS.pendiente || o.status === STATUS.enruta);
+    const ids = active.map(o => o.id);
+
+    if (!state.seenReady) {
+      // Primera carga: damos por conocidos los pedidos que ya estaban.
+      state.seen = new Set(ids);
+      state.seenReady = true;
+      return;
+    }
+
+    const fresh = active.filter(o => !state.seen.has(o.id));
+    ids.forEach(id => state.seen.add(id));
+
+    // Limpia los que ya no están activos para que no crezca sin control.
+    state.seen.forEach(id => { if (ids.indexOf(id) === -1) state.seen.delete(id); });
+
+    if (fresh.length) notifyNewOrders(fresh);
+  }
+
+  function notifyNewOrders(list) {
+    const first = list[0];
+    const extra = list.length > 1 ? ' (+' + (list.length - 1) + ' más)' : '';
+    ui.toast('🔔 Nuevo pedido: ' + first.client + extra, 'success');
+    playChime();
+    flashTitle();
+
+    if (typeof window.Notification !== 'undefined' && window.Notification.permission === 'granted') {
+      try {
+        const n = new window.Notification('Nuevo pedido asignado', {
+          body: first.client + ' · ' + (first.address || 'Sin dirección'),
+          icon: 'assets/logo-magaly.png',
+          tag: 'magaly-order-' + first.id
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch (err) { /* algunos navegadores lo bloquean */ }
+    }
+  }
+
+  // Sonido corto sin archivos externos.
+  function playChime() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+      const now = ctx.currentTime;
+      [0, 0.18].forEach((offset, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = i === 0 ? 880 : 1175;
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.28, now + offset + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.17);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.2);
+      });
+      setTimeout(() => { try { ctx.close(); } catch (err) { /* ignora */ } }, 900);
+    } catch (err) { /* sin sonido */ }
+  }
+
+  function flashTitle() {
+    if (!document.hidden) return;
+    const original = document.title;
+    let on = false;
+    const timer = setInterval(() => {
+      document.title = on ? '🔔 Nuevo pedido' : original;
+      on = !on;
+    }, 900);
+    setTimeout(() => {
+      clearInterval(timer);
+      document.title = original;
+    }, 12000);
   }
 
   // ==========================================================================
@@ -102,6 +215,66 @@
   }
 
   // ==========================================================================
+  // RUTA COMPLETA EN GOOGLE MAPS
+  // ==========================================================================
+  function renderRoute() {
+    const toolbar = document.getElementById('driver-toolbar');
+    const link = document.getElementById('route-btn');
+    const note = document.getElementById('route-note');
+    if (!toolbar || !link) return;
+
+    const items = state.orders
+      .filter(o => o.status === STATUS.pendiente || o.status === STATUS.enruta)
+      .filter(o => String(o.address || '').trim());
+
+    const url = buildRouteUrl(items);
+    if (!url) {
+      toolbar.hidden = true;
+      return;
+    }
+
+    toolbar.hidden = false;
+    link.href = url;
+    link.textContent = items.length === 1
+      ? '🗺️ Abrir dirección en Maps'
+      : '🗺️ Abrir ruta completa (' + items.length + ' paradas)';
+
+    if (note) {
+      const extra = items.length > 10 ? 'Maps admite 10 paradas; se abrirán las 10 primeras.' : '';
+      note.textContent = extra;
+      note.hidden = !extra;
+    }
+  }
+
+  function buildRouteUrl(items) {
+    const addresses = items
+      .map(o => String(o.address || '').trim())
+      .filter(Boolean)
+      .slice(0, 10);
+
+    if (!addresses.length) return '';
+
+    const destination = addresses[addresses.length - 1];
+    const waypoints = addresses.slice(0, -1);
+    let url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(destination);
+    if (waypoints.length) {
+      url += '&waypoints=' + encodeURIComponent(waypoints.join('|'));
+    }
+    return url;
+  }
+
+  // Mensaje listo para avisar al cliente que va en camino.
+  function onTheWayUrl(o) {
+    const phone = String(o.phone || '').replace(/\D/g, '');
+    if (!phone) return '';
+    const number = phone.replace(/^57/, '');
+    const message = 'Hola ' + (o.client || '') + ', soy ' + state.driver.name +
+      ' de Agua Magaly. Voy en camino con tu pedido ' + o.code +
+      '. Total a pagar: ' + U.formatMoney(o.total) + '. ¡Gracias!';
+    return 'https://api.whatsapp.com/send?phone=57' + number + '&text=' + encodeURIComponent(message);
+  }
+
+  // ==========================================================================
   // PEDIDOS
   // ==========================================================================
   function renderJobs() {
@@ -128,8 +301,7 @@
   }
 
   function jobCard(o) {
-    const waPhone = String(o.phone || '').replace(/\D/g, '');
-    const wa = waPhone ? 'https://api.whatsapp.com/send?phone=57' + waPhone.replace(/^57/, '') : '';
+    const wa = onTheWayUrl(o);
     const maps = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(o.address || o.client);
 
     let actions = '';
@@ -147,7 +319,7 @@
           '<button type="button" class="btn btn-danger" data-fail="' + ui.esc(o.id) + '">✕ No entregué</button>' +
         '</div>' +
         '<div class="job-actions">' +
-          (wa ? '<a class="btn btn-ghost" style="color:var(--blue-deep);border-color:var(--rule)" href="' + wa + '" target="_blank" rel="noopener">💬 WhatsApp</a>' : '') +
+          (wa ? '<a class="btn btn-ghost" style="color:var(--blue-deep);border-color:var(--rule)" href="' + wa + '" target="_blank" rel="noopener">💬 Voy en camino</a>' : '') +
           '<a class="btn btn-ghost" style="color:var(--blue-deep);border-color:var(--rule)" href="' + maps + '" target="_blank" rel="noopener">🗺️ Mapa</a>' +
           (o.phone ? '<a class="btn btn-ghost" style="color:var(--blue-deep);border-color:var(--rule)" href="tel:' + ui.esc(o.phone) + '">📞 Llamar</a>' : '') +
         '</div>';

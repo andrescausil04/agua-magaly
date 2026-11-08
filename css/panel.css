@@ -1377,6 +1377,49 @@
   color: var(--ink-soft);
 }
 
+.driver-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: #FFF8EC;
+  border: 1px dashed #E7C79A;
+  color: #8A5A16;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.driver-banner span { flex: 1 1 170px; }
+
+.driver-banner .btn {
+  flex: 0 0 auto;
+  padding: 9px 13px;
+  font-size: 12.5px;
+}
+
+.driver-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.driver-toolbar .btn {
+  width: 100%;
+  padding: 11px 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.driver-toolbar-note {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
 .job-list {
   display: flex;
   flex-direction: column;

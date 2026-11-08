@@ -33,6 +33,16 @@
     <section id="view-pedidos">
       <div class="driver-summary" id="driver-summary"></div>
 
+      <div class="driver-banner" id="notif-banner" hidden>
+        <span>🔔 Activa los avisos para enterarte al instante cuando te asignen un pedido.</span>
+        <button type="button" class="btn btn-primary" id="enable-notif">Activar avisos</button>
+      </div>
+
+      <div class="driver-toolbar" id="driver-toolbar" hidden>
+        <a class="btn btn-primary" id="route-btn" href="#" target="_blank" rel="noopener">🗺️ Abrir ruta completa</a>
+        <span class="driver-toolbar-note" id="route-note" hidden></span>
+      </div>
+
       <div class="seg" id="driver-range" style="margin-bottom:12px">
         <button type="button" class="active" data-range="activos">Por entregar</button>
         <button type="button" data-range="hoy">Todo hoy</button>
@@ -100,10 +110,10 @@
     </button>
   </nav>
 
-  <script src="js/config.js?v=20261108"></script>
-  <script src="js/store.js?v=20261108"></script>
-  <script src="js/ui.js?v=20261108"></script>
-  <script src="js/auth.js?v=20261108"></script>
-  <script src="js/repartidor.js?v=20261108"></script>
+  <script src="js/config.js?v=20261109"></script>
+  <script src="js/store.js?v=20261109"></script>
+  <script src="js/ui.js?v=20261109"></script>
+  <script src="js/auth.js?v=20261109"></script>
+  <script src="js/repartidor.js?v=20261109"></script>
 </body>
 </html>
