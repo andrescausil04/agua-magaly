@@ -63,12 +63,15 @@ La web no envía correos de confirmación, así que hay que desactivarlo:
 
 En **Authentication** → **Users** → **Add user** → **Create new user**:
 
-| Correo                 | Contraseña temporal | Auto Confirm |
-| ---------------------- | ------------------- | ------------ |
-| `admin@aguamagaly.app` | `Magaly2026`        | ✅ Sí        |
+| Correo                 | Contraseña              | Auto Confirm |
+| ---------------------- | ----------------------- | ------------ |
+| `admin@aguamagaly.app` | (la que elijas, 12+ y única) | ✅ Sí   |
 
 > El usuario para entrar a la web es `admin`.
-> Después de entrar, cámbiale la contraseña en **Mi cuenta**.
+>
+> **Nunca escribas la contraseña real en este archivo ni en ningún otro del
+> repositorio**: este proyecto se publica en GitHub Pages y cualquiera puede
+> leerlo. Guárdala solo en tu gestor de contraseñas.
 >
 > Los repartidores **no** hace falta crearlos aquí: se crean desde el panel,
 > en la sección **Repartidores → Nuevo repartidor**.
@@ -105,7 +108,7 @@ window.MAGALY_CONFIG = {
 
 Abre la web y prueba:
 
-1. Entra como `admin` / `Magaly2026`.
+1. Entra como `admin` con la contraseña que definiste (no la escribas aquí).
 2. Desde otro celular, haz un pedido en la tienda.
 3. En el panel debe aparecer el pedido **sin recargar** (tiempo real).
 
