@@ -85,6 +85,12 @@ window.MagalyAuth = (function () {
       return { ok: false, error: 'Escribe tu usuario y contraseña.' };
     }
 
+    // Si la nube está configurada pero no responde, NO se permite el modo local.
+    // Así nunca se puede entrar con las credenciales de prueba por un fallo.
+    if (store().cloudConfigured && store().cloudConfigured() && !store().isCloud()) {
+      return { ok: false, error: 'No se pudo conectar con el servidor de Agua Magaly. Revisa tu internet e inténtalo de nuevo.' };
+    }
+
     // ---- NUBE: Supabase verifica la contraseña ----
     if (store().isCloud()) {
       const attempt = await store().signIn(store().emailFor(username), password);
@@ -140,6 +146,11 @@ window.MagalyAuth = (function () {
   // Guardias de página
   // ---------------------------------------------------------------------------
   async function currentUser() {
+    await store().ready();
+    if (store() && store().cloudConfigured && store().cloudConfigured() && !store().isCloud()) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
     if (store() && store().isCloud && store().isCloud()) {
       const me = await store().profile();
       if (!me || !me.active) {
@@ -194,7 +205,8 @@ window.MagalyAuth = (function () {
 
     const currentHash = await store().hashPassword(currentPass);
     if (currentHash !== user.hash) return { ok: false, error: 'La contraseña actual no es correcta.' };
-    if (String(newPass || '').length < 4) return { ok: false, error: 'La nueva contraseña debe tener al menos 4 caracteres.' };
+    const issue = store().passwordIssue ? store().passwordIssue(newPass) : '';
+    if (issue) return { ok: false, error: issue };
 
     user.hash = await store().hashPassword(newPass);
     await store().upsert('users', user);
@@ -218,25 +230,32 @@ window.MagalyAuth = (function () {
     const demoBox = document.getElementById('login-demo');
 
     if (demoBox) {
-      store().ready().then(async () => {
-        const users = await store().list('users');
-        const defaultHash = await store().hashPassword('1234');
-        const openUsers = users.filter(u => u.active && u.hash === defaultHash);
-        if (!openUsers.length) {
-          demoBox.innerHTML = '<strong>Accesos del equipo</strong>' +
-            '<div style="margin-top:6px;font-size:13px">' +
-            'Usa el usuario y la contraseña que te entregó el administrador.' +
-            '</div>';
-          return;
-        }
-        demoBox.innerHTML = '<strong>Accesos con clave inicial</strong>' +
-          '<div style="margin-top:6px;font-size:13px;line-height:1.7">' +
-          openUsers.map(u =>
-            (u.role === 'admin' ? 'Administrador' : 'Repartidor ' + u.name.split(' ')[0]) +
-            ': <code>' + u.username + '</code> / <code>1234</code>'
-          ).join('<br>') +
+      if (store().cloudConfigured && store().cloudConfigured()) {
+        demoBox.innerHTML = '<strong>Acceso del equipo</strong>' +
+          '<div style="margin-top:6px;font-size:13px">' +
+          'Usa el usuario y la contraseña que te entregó el administrador.' +
           '</div>';
-      });
+      } else {
+        store().ready().then(async () => {
+          const users = await store().list('users');
+          const defaultHash = await store().hashPassword('1234');
+          const openUsers = users.filter(u => u.active && u.hash === defaultHash);
+          if (!openUsers.length) {
+            demoBox.innerHTML = '<strong>Accesos del equipo</strong>' +
+              '<div style="margin-top:6px;font-size:13px">' +
+              'Usa el usuario y la contraseña que te entregó el administrador.' +
+              '</div>';
+            return;
+          }
+          demoBox.innerHTML = '<strong>Accesos con clave inicial</strong>' +
+            '<div style="margin-top:6px;font-size:13px;line-height:1.7">' +
+            openUsers.map(u =>
+              (u.role === 'admin' ? 'Administrador' : 'Repartidor ' + u.name.split(' ')[0]) +
+              ': <code>' + u.username + '</code> / <code>1234</code>'
+            ).join('<br>') +
+            '</div>';
+        });
+      }
     }
 
     form.addEventListener('submit', async e => {

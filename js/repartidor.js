@@ -382,7 +382,7 @@
     ui.toast('Registrando salida a ruta…');
     const geo = await withGeo();
 
-    await store.upsert('orders', Object.assign({}, order, {
+    await store.update('orders', order.id, Object.assign({}, order, {
       status: STATUS.enruta,
       events: (order.events || []).concat([{
         type: 'en_ruta',
@@ -406,7 +406,7 @@
 
     const geo = await withGeo();
 
-    await store.upsert('orders', Object.assign({}, order, {
+    await store.update('orders', order.id, Object.assign({}, order, {
       status: STATUS.entregado,
       paid: result.paid,
       payment: result.payment,
@@ -436,7 +436,7 @@
     });
     if (!reason) return;
 
-    await store.upsert('orders', Object.assign({}, order, {
+    await store.update('orders', order.id, Object.assign({}, order, {
       status: STATUS.pendiente,
       failReason: reason,
       events: (order.events || []).concat([{

@@ -11,9 +11,13 @@
 --                       rutas y ajustes), guardados como JSON.
 --
 -- Seguridad:
---   * Cualquier visitante puede CREAR pedidos y PQRS (formulario público).
---   * Solo el personal con sesión iniciada puede LEER pedidos/PQRS y editar.
+--   * Cualquier visitante puede CREAR pedidos y PQRS (formulario público),
+--     pero el servidor sanea esos datos (estado, repartidor, cobro, total).
+--   * Solo el personal con sesión iniciada puede LEER pedidos/PQRS.
+--   * El repartidor solo ve y actualiza sus pedidos asignados.
+--   * El administrador gestiona todo el catálogo, rutas, PQRS y personal.
 --   * El catálogo de productos y los ajustes son de lectura pública.
+--   * Para bases ya creadas, aplica también database/security-hardening.sql.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -67,13 +71,6 @@ as $$
   );
 $$;
 
-create or replace function public.staff_is_empty()
-returns boolean
-language sql stable security definer set search_path = public
-as $$
-  select not exists (select 1 from public.staff);
-$$;
-
 create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql
@@ -98,16 +95,11 @@ alter table public.records enable row level security;
 grant select, insert, update, delete on public.records to anon, authenticated;
 grant select, insert, update, delete on public.staff   to authenticated;
 
--- Personal: lo puede ver el equipo; solo el administrador lo gestiona.
+-- Personal: cada quien ve su ficha; solo el administrador ve y gestiona todo.
 drop policy if exists "staff_read" on public.staff;
 create policy "staff_read" on public.staff
   for select to authenticated
-  using (public.is_staff());
-
-drop policy if exists "staff_bootstrap_first_admin" on public.staff;
-create policy "staff_bootstrap_first_admin" on public.staff
-  for insert to authenticated
-  with check (public.staff_is_empty());
+  using (id = auth.uid() or public.is_admin());
 
 drop policy if exists "staff_admin_manage" on public.staff;
 create policy "staff_admin_manage" on public.staff
@@ -121,37 +113,159 @@ create policy "records_public_catalog" on public.records
   for select to anon, authenticated
   using (entity in ('products', 'settings'));
 
--- Datos: los clientes pueden crear pedidos y PQRS.
+-- Datos: los clientes pueden crear pedidos y PQRS (nunca el personal).
 drop policy if exists "records_public_create" on public.records;
 create policy "records_public_create" on public.records
   for insert to anon, authenticated
-  with check (entity in ('orders', 'pqrs'));
+  with check (entity in ('orders', 'pqrs') and not public.is_staff());
 
--- Datos: el equipo puede leer todo.
+-- Datos: solo el administrador crea, edita y borra el resto.
+drop policy if exists "records_admin_insert" on public.records;
+create policy "records_admin_insert" on public.records
+  for insert to authenticated
+  with check (public.is_admin());
+
+drop policy if exists "records_admin_update" on public.records;
+create policy "records_admin_update" on public.records
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "records_admin_delete" on public.records;
+create policy "records_admin_delete" on public.records
+  for delete to authenticated
+  using (public.is_admin());
+
+-- Datos: el repartidor solo actualiza sus pedidos asignados.
+drop policy if exists "records_driver_update" on public.records;
+create policy "records_driver_update" on public.records
+  for update to authenticated
+  using (
+    public.is_staff()
+    and entity = 'orders'
+    and data->>'driverId' = auth.uid()::text
+  )
+  with check (
+    public.is_staff()
+    and entity = 'orders'
+    and data->>'driverId' = auth.uid()::text
+  );
+
+-- Datos: lectura del equipo (admin todo; repartidor catálogo, ajustes y lo suyo).
 drop policy if exists "records_staff_read" on public.records;
 create policy "records_staff_read" on public.records
   for select to authenticated
-  using (public.is_staff());
+  using (
+    public.is_admin()
+    or (
+      public.is_staff()
+      and (
+        entity in ('products', 'settings')
+        or (entity = 'orders' and data->>'driverId' = auth.uid()::text)
+      )
+    )
+  );
 
--- Datos: el equipo puede crear, editar y borrar.
-drop policy if exists "records_staff_insert" on public.records;
-create policy "records_staff_insert" on public.records
-  for insert to authenticated
-  with check (public.is_staff());
-
-drop policy if exists "records_staff_update" on public.records;
-create policy "records_staff_update" on public.records
-  for update to authenticated
-  using (public.is_staff())
-  with check (public.is_staff());
-
-drop policy if exists "records_staff_delete" on public.records;
-create policy "records_staff_delete" on public.records
-  for delete to authenticated
-  using (public.is_staff());
+-- El público no necesita actualizar ni borrar registros.
+revoke update, delete on public.records from anon;
 
 -- ----------------------------------------------------------------------------
--- 5. TIEMPO REAL (para que el panel se actualice solo)
+-- 5. SANEAMIENTO Y PROTECCIÓN DE PEDIDOS
+-- ----------------------------------------------------------------------------
+create or replace function public.sanitize_public_record()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  d jsonb;
+  n numeric;
+begin
+  if public.is_staff() then
+    return new;
+  end if;
+
+  d := coalesce(new.data, '{}'::jsonb);
+
+  if new.entity = 'orders' then
+    d := jsonb_set(d, '{status}',      to_jsonb('Pendiente'::text), true);
+    d := jsonb_set(d, '{driverId}',    'null'::jsonb,                true);
+    d := jsonb_set(d, '{driverName}',  to_jsonb(''::text),           true);
+    d := jsonb_set(d, '{paid}',        'false'::jsonb,               true);
+    d := jsonb_set(d, '{payment}',     to_jsonb(''::text),           true);
+    d := jsonb_set(d, '{events}',      '[]'::jsonb,                  true);
+    d := jsonb_set(d, '{createdAt}',   to_jsonb(now()),              true);
+    d := jsonb_set(d, '{source}',      to_jsonb('web'::text),        true);
+
+    begin
+      n := coalesce((d->>'total')::numeric, 0);
+    exception when others then
+      n := 0;
+    end;
+    n := greatest(0, least(n, 100000000));
+    d := jsonb_set(d, '{total}', to_jsonb(n), true);
+
+    d := jsonb_set(d, '{client}',  to_jsonb(left(coalesce(d->>'client',''),  120)), true);
+    d := jsonb_set(d, '{phone}',   to_jsonb(left(coalesce(d->>'phone',''),    40)), true);
+    d := jsonb_set(d, '{address}', to_jsonb(left(coalesce(d->>'address',''), 240)), true);
+    d := jsonb_set(d, '{items}',   to_jsonb(left(coalesce(d->>'items',''),   600)), true);
+    d := jsonb_set(d, '{notes}',   to_jsonb(left(coalesce(d->>'notes',''),   600)), true);
+
+  elsif new.entity = 'pqrs' then
+    d := jsonb_set(d, '{status}',    to_jsonb('Nueva'::text), true);
+    d := jsonb_set(d, '{createdAt}', to_jsonb(now()),         true);
+    d := jsonb_set(d, '{name}',      to_jsonb(left(coalesce(d->>'name',''),    120)), true);
+    d := jsonb_set(d, '{contact}',   to_jsonb(left(coalesce(d->>'contact',''),  80)), true);
+    d := jsonb_set(d, '{message}',   to_jsonb(left(coalesce(d->>'message',''), 2000)), true);
+    d := jsonb_set(d, '{type}',      to_jsonb(left(coalesce(d->>'type','Solicitud'), 60)), true);
+  end if;
+
+  new.data := d;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists records_sanitize_public on public.records;
+create trigger records_sanitize_public
+  before insert on public.records
+  for each row execute function public.sanitize_public_record();
+
+create or replace function public.guard_record_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+begin
+  if public.is_admin() then
+    return new;
+  end if;
+
+  if new.entity = 'orders' then
+    if coalesce(old.data->>'driverId','') <> coalesce(new.data->>'driverId','') then
+      raise exception 'No puedes reasignar un pedido.';
+    end if;
+    if coalesce(old.data->>'client','')  <> coalesce(new.data->>'client','')
+       or coalesce(old.data->>'phone','')   <> coalesce(new.data->>'phone','')
+       or coalesce(old.data->>'address','') <> coalesce(new.data->>'address','')
+       or coalesce(old.data->>'total','')   <> coalesce(new.data->>'total','')
+       or coalesce(old.data->>'code','')    <> coalesce(new.data->>'code','') then
+      raise exception 'No puedes cambiar los datos base del pedido.';
+    end if;
+  end if;
+
+  return new;
+end;
+$fn$;
+
+drop trigger if exists records_guard_update on public.records;
+create trigger records_guard_update
+  before update on public.records
+  for each row execute function public.guard_record_update();
+
+-- ----------------------------------------------------------------------------
+-- 6. TIEMPO REAL (para que el panel se actualice solo)
 -- ----------------------------------------------------------------------------
 alter table public.records replica identity full;
 

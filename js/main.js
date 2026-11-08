@@ -18,6 +18,26 @@
     PQRS: 'magaly_pqrs'
   };
 
+  // Escapa texto antes de insertarlo como HTML (protección contra XSS).
+  function esc(value) {
+    return String(value === null || value === undefined ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Solo permite rutas locales o URLs http(s) para las imágenes del catálogo.
+  function safeImageUrl(value) {
+    const url = String(value || '').trim();
+    if (!url) return 'assets/bolsa-250ml.jpg';
+    if (/^https?:\/\//i.test(url) || /^(\.{0,2}\/)?assets\//i.test(url) || /^[a-z0-9._-]+\.(png|jpe?g|webp|gif|avif)$/i.test(url)) {
+      return url;
+    }
+    return 'assets/bolsa-250ml.jpg';
+  }
+
   /**
    * Guarda un registro en la base de datos en la nube, si está configurada.
    * Si no hay nube, no hace nada (el guardado local ya ocurrió).
@@ -258,18 +278,18 @@
 
       row.innerHTML = `
         <div class="product-thumb">
-          <img src="${p.image || 'assets/bolsa-250ml.jpg'}" alt="${p.name}">
+          <img src="${esc(safeImageUrl(p.image))}" alt="${esc(p.name)}">
         </div>
         <div class="product-info">
-          <h3>${p.name}</h3>
-          <span class="badge-tag">${p.badge || 'Producto'}</span>
-          <div class="desc">${p.desc || ''}</div>
-          <div class="price">${formatMoney(p.price)} <span class="note">${p.unit || ''}</span></div>
+          <h3>${esc(p.name)}</h3>
+          <span class="badge-tag">${esc(p.badge || 'Producto')}</span>
+          <div class="desc">${esc(p.desc || '')}</div>
+          <div class="price">${formatMoney(p.price)} <span class="note">${esc(p.unit || '')}</span></div>
         </div>
         <div class="qty-stepper">
-          <button type="button" class="qty-minus" aria-label="Quitar ${p.name}">–</button>
+          <button type="button" class="qty-minus" aria-label="Quitar ${esc(p.name)}">–</button>
           <span class="qty-val">${cart[p.id] || 0}</span>
-          <button type="button" class="qty-plus" aria-label="Agregar ${p.name}">+</button>
+          <button type="button" class="qty-plus" aria-label="Agregar ${esc(p.name)}">+</button>
         </div>
         <div class="row-subtotal">${formatMoney(p.price * (cart[p.id] || 0))}</div>
       `;
@@ -336,12 +356,12 @@
           line.className = 'cart-line';
           line.innerHTML = `
             <div>
-              <div class="cart-line-name">${p.name}</div>
-              <small style="color: var(--ink-soft); font-size: 12.5px;">${p.unit || ''}</small>
+              <div class="cart-line-name">${esc(p.name)}</div>
+              <small style="color: var(--ink-soft); font-size: 12.5px;">${esc(p.unit || '')}</small>
             </div>
             <span class="cart-line-qty">${qty} × ${formatMoney(p.price)}</span>
             <span class="cart-line-subtotal">${formatMoney(subtotal)}</span>
-            <button type="button" class="cart-remove" aria-label="Quitar ${p.name}">
+            <button type="button" class="cart-remove" aria-label="Quitar ${esc(p.name)}">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               </svg>

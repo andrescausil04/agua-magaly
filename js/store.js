@@ -31,9 +31,12 @@ window.MagalyStore = (function () {
   const CONFIG = window.MAGALY_CONFIG || {};
   const CLOUD_CONFIGURED = !!(CONFIG.supabaseUrl && CONFIG.supabaseAnonKey);
   const USERNAME_DOMAIN = CONFIG.usernameDomain || 'aguamagaly.app';
+  // Librería oficial de Supabase alojada en el propio sitio, con versión fija.
+  // Evita depender de un CDN externo (riesgo de cadena de suministro).
   const SDK_URLS = [
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
-    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js'
+    /\/login\//.test(window.location.pathname)
+      ? '../js/vendor/supabase.min.js'
+      : 'js/vendor/supabase.min.js'
   ];
 
   // ==========================================================================
@@ -359,6 +362,7 @@ window.MagalyStore = (function () {
   let sdk = null;
   let sb = null;
   let cloudActive = false;
+  let cloudFailed = false;
 
   function loadSdk() {
     if (window.supabase && window.supabase.createClient) return Promise.resolve(window.supabase);
@@ -442,27 +446,30 @@ window.MagalyStore = (function () {
     return LocalAdapter.read(key);
   }
 
-  async function seed() {
+  async function seed(withLocalUsers) {
     ensure(KEYS.products, SEED.products);
     ensure(KEYS.orders, []);
     ensure(KEYS.routes, SEED.routes);
     ensure(KEYS.pqrs, SEED.pqrs);
     ensure(KEYS.settings, SEED.settings);
 
-    // Migración de la colección de usuarios
-    const users = ensure(KEYS.users, []);
-    if (!Array.isArray(users) || users.length === 0) {
-      const seeded = [];
-      for (const u of SEED.users) {
-        seeded.push(Object.assign({}, u, { hash: await hashPassword('1234') }));
-      }
-      LocalAdapter.write(KEYS.users, seeded);
-    } else {
-      // Asegura que exista al menos un administrador con clave conocida
-      const hasAdmin = users.some(u => u.role === 'admin');
-      if (!hasAdmin) {
-        users.push(Object.assign({}, SEED.users[0], { hash: await hashPassword('1234') }));
-        LocalAdapter.write(KEYS.users, users);
+    // Las cuentas de prueba SOLO se crean en modo local sin nube configurada.
+    // Si Supabase está configurado, jamás se siembran credenciales conocidas.
+    if (withLocalUsers !== false) {
+      const users = ensure(KEYS.users, []);
+      if (!Array.isArray(users) || users.length === 0) {
+        const seeded = [];
+        for (const u of SEED.users) {
+          seeded.push(Object.assign({}, u, { hash: await hashPassword('1234') }));
+        }
+        LocalAdapter.write(KEYS.users, seeded);
+      } else {
+        // Asegura que exista al menos un administrador con clave conocida
+        const hasAdmin = users.some(u => u.role === 'admin');
+        if (!hasAdmin) {
+          users.push(Object.assign({}, SEED.users[0], { hash: await hashPassword('1234') }));
+          LocalAdapter.write(KEYS.users, users);
+        }
       }
     }
 
@@ -504,14 +511,18 @@ window.MagalyStore = (function () {
         if (CLOUD_CONFIGURED) {
           try {
             await initCloud();
+            cloudFailed = false;
             return;
           } catch (err) {
-            console.error('[store] no se pudo conectar a Supabase; se usa el modo local.', err);
+            console.error('[store] no se pudo conectar a Supabase.', err);
             cloudActive = false;
+            cloudFailed = true;
             sb = null;
           }
         }
-        await seed();
+        // Nunca sembrar usuarios locales cuando la nube está configurada:
+        // evita que un fallo de conexión habilite credenciales conocidas.
+        await seed(!CLOUD_CONFIGURED);
       })();
     }
     return readyPromise;
@@ -646,6 +657,30 @@ window.MagalyStore = (function () {
     return record;
   }
 
+  /**
+   * Actualiza un registro existente sin permitir crearlo por accidente.
+   * En pedidos, el repartidor solo puede tocar los que tiene asignados;
+   * la base de datos también lo exige.
+   */
+  async function update(entity, id, record) {
+    await ready();
+    if (!cloudActive) return upsert(entity, record);
+    if (entity === 'users' || entity === 'settings') return upsert(entity, record);
+
+    const { data, error } = await sb.from('records')
+      .update({ data: record })
+      .eq('entity', entity)
+      .eq('id', id)
+      .select('id');
+
+    if (error) throw error;
+    if (!data || !data.length) {
+      throw new Error('No se pudo guardar el cambio: permiso denegado o registro inexistente.');
+    }
+    notify(entity);
+    return record;
+  }
+
   async function remove(entity, id) {
     await ready();
 
@@ -685,9 +720,22 @@ window.MagalyStore = (function () {
     if (/invalid login credentials/i.test(text)) return 'Usuario o contraseña incorrectos.';
     if (/email not confirmed/i.test(text)) return 'La cuenta aún no está confirmada. Pide al administrador que la active.';
     if (/user already registered/i.test(text)) return 'Ese usuario ya existe.';
-    if (/password should be at least/i.test(text)) return 'La contraseña debe tener al menos 6 caracteres.';
+    if (/password should be at least/i.test(text)) return 'La contraseña debe tener al menos 8 caracteres.';
     if (/rate limit|too many/i.test(text)) return 'Demasiados intentos. Espera un minuto e inténtalo de nuevo.';
     return text || 'No se pudo completar la operación.';
+  }
+
+  /**
+   * Política mínima de contraseñas: 8+ caracteres con letras y números.
+   * Devuelve el mensaje de error o una cadena vacía si es válida.
+   */
+  function passwordIssue(password) {
+    const value = String(password || '');
+    if (value.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
+    if (!/[A-Za-z]/.test(value) || !/[0-9]/.test(value)) {
+      return 'La contraseña debe incluir al menos una letra y un número.';
+    }
+    return '';
   }
 
   async function signIn(email, password) {
@@ -728,9 +776,8 @@ window.MagalyStore = (function () {
 
     const me = await profile();
     if (!me) return { ok: false, error: 'Tu sesión expiró. Vuelve a entrar.' };
-    if (String(newPass || '').length < 6) {
-      return { ok: false, error: 'La nueva contraseña debe tener al menos 6 caracteres.' };
-    }
+    const issue = passwordIssue(newPass);
+    if (issue) return { ok: false, error: issue };
 
     const check = await sb.auth.signInWithPassword({
       email: emailFor(me.username),
@@ -756,8 +803,35 @@ window.MagalyStore = (function () {
       return { ok: false, error: 'El usuario debe tener al menos 3 letras o números, sin espacios.' };
     }
     const password = String(input.password || '');
-    if (password.length < 6) {
-      return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres.' };
+    const issue = passwordIssue(password);
+    if (issue) return { ok: false, error: issue };
+
+    // 1) Vía segura recomendada: Edge Function con service_role.
+    //    Solo funciona si el administrador la desplegó y está autenticado.
+    try {
+      const { data, error } = await sb.functions.invoke('create-staff', {
+        body: {
+          username: username,
+          name: input.name || username,
+          phone: input.phone || '',
+          password: password,
+          role: input.role === 'admin' ? 'admin' : 'driver',
+          color: input.color || '#1C7FA8',
+          active: input.active !== false
+        }
+      });
+      if (!error && data && data.ok) {
+        notify('users');
+        return { ok: true, id: data.id };
+      }
+      if (data && data.error) return { ok: false, error: data.error };
+      const msg = String((error && (error.message || error)) || '');
+      // Si la función aún no está desplegada, se usa el método anterior.
+      if (msg && !/not found|404|failed to send|fetch/i.test(msg)) {
+        return { ok: false, error: friendlyAuthError(msg) };
+      }
+    } catch (err) {
+      // Sin Edge Function: continúa con el alta clásica.
     }
 
     let temp = null;
@@ -856,13 +930,16 @@ window.MagalyStore = (function () {
     list,
     saveAll,
     upsert,
+    update,
     remove,
     subscribe,
     hashPassword,
+    passwordIssue,
     exportCsv,
     uid,
     isCloud: () => cloudActive,
-    cloudConfigured: CLOUD_CONFIGURED,
+    cloudConfigured: () => CLOUD_CONFIGURED,
+    cloudFailed: () => cloudFailed,
     emailFor,
     signIn,
     signOut,

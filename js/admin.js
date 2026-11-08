@@ -171,7 +171,18 @@
   }
 
   function driverColor(user) {
-    return (user && user.color) || '#1C7FA8';
+    const value = String((user && user.color) || '').trim();
+    // Solo se aceptan colores hexadecimales; evita inyección en el atributo style.
+    return /^#[0-9a-f]{3,8}$/i.test(value) ? value : '#1C7FA8';
+  }
+
+  function safeImage(value) {
+    const url = String(value || '').trim();
+    if (!url) return 'assets/bolsa-250ml.jpg';
+    if (/^https?:\/\//i.test(url) || /^(\.{0,2}\/)?assets\//i.test(url) || /^[a-z0-9._-]+\.(png|jpe?g|webp|gif|avif)$/i.test(url)) {
+      return url;
+    }
+    return 'assets/bolsa-250ml.jpg';
   }
 
   // ==========================================================================
@@ -810,7 +821,7 @@
 
     grid.innerHTML = state.products.map((p, i) =>
       '<article class="product-card">' +
-        '<img src="' + ui.esc(p.image || 'assets/bolsa-250ml.jpg') + '" alt="' + ui.esc(p.name) + '" loading="lazy">' +
+        '<img src="' + ui.esc(safeImage(p.image)) + '" alt="' + ui.esc(p.name) + '" loading="lazy">' +
         '<div class="product-card-body">' +
           '<h4>' + ui.esc(p.name) + '</h4>' +
           '<p>' + ui.esc(p.desc || 'Sin descripción') + '</p>' +
@@ -866,7 +877,7 @@
   function openDriverForm(driver) {
     const d = driver || {};
     const cloud = !!(store && store.isCloud && store.isCloud());
-    const minPass = cloud ? 6 : 4;
+    const minPass = 8;
 
     // En la nube, cada persona cambia su propia contraseña desde «Mi cuenta».
     const passwordField = (cloud && driver)
@@ -917,6 +928,10 @@
         if (!driver && pass.length < minPass) {
           ui.toast('La contraseña debe tener al menos ' + minPass + ' caracteres', 'error');
           return false;
+        }
+        if (pass && store.passwordIssue) {
+          const issue = store.passwordIssue(pass);
+          if (issue) { ui.toast(issue, 'error'); return false; }
         }
 
         const name = form.querySelector('#f-dname').value.trim();

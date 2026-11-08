@@ -170,6 +170,10 @@
     if (!backdrop) return;
 
     closeBtn.addEventListener('click', closePostModal);
+    const focusCommentBtn = document.getElementById('modal-focus-comment-btn');
+    if (focusCommentBtn && commentInput) {
+      focusCommentBtn.addEventListener('click', () => commentInput.focus());
+    }
     backdrop.addEventListener('click', (e) => {
       if (e.target === backdrop) closePostModal();
     });
