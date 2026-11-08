@@ -991,7 +991,6 @@
         '</div>' +
         '<div class="cred-box">' +
           '<span>Usuario: <code>' + ui.esc(d.username) + '</code></span>' +
-          '<span>Clave: la que definiste al crearlo (él puede cambiarla en su panel)</span>' +
         '</div>' +
         '<div class="driver-card-foot">' +
           '<button type="button" class="btn btn-ghost btn-sm" data-edit-driver="' + ui.esc(d.id) + '" style="color:var(--blue-deep);border-color:var(--rule)">Editar</button>' +
