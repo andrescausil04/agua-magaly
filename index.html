@@ -14,12 +14,12 @@
 
   <!-- Estilos del Sistema y Favicon -->
   <link rel="icon" type="image/png" href="assets/logo-magaly.png">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=20261111">
 </head>
 <body>
 
   <!-- ========================================================================
-       BARRA DE NAVEGACIÓN PÚBLICA (SIN BOTÓN VISIBLE DE ADMIN)
+       BARRA DE NAVEGACIÓN PÚBLICA (CON ACCESO DISCRETO PARA EL EQUIPO)
        ======================================================================== -->
   <header class="nav">
     <div class="nav-inner">
@@ -64,6 +64,34 @@
         <a href="#quejas">Quejas y sugerencias</a>
         <a href="https://www.instagram.com/aguamagaly?stkn=MXE5N3NvdzNjazJzNQ==" target="_blank" rel="noopener" class="nav-mobile-instagram">📸 Instagram</a>
       </nav>
+
+      <!-- Acceso discreto para el equipo (administración y reparto) -->
+      <div class="nav-mobile-staff">
+        <span class="nav-mobile-staff-title">Acceso del equipo</span>
+        <div class="nav-mobile-staff-grid">
+          <a href="admin.html" class="nav-mobile-staff-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>
+              <strong>Administración</strong>
+              <small>Panel del negocio</small>
+            </span>
+          </a>
+          <a href="repartidor.html" class="nav-mobile-staff-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M1 4h14v12H1z"></path>
+              <path d="M15 9h4l3 3v4h-7V9z"></path>
+              <circle cx="5.5" cy="18.5" r="2.5"></circle>
+              <circle cx="18.5" cy="18.5" r="2.5"></circle>
+            </svg>
+            <span>
+              <strong>Reparto</strong>
+              <small>Panel del repartidor</small>
+            </span>
+          </a>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -542,8 +570,8 @@
   </footer>
 
   <!-- Scripts modulares -->
-  <script src="js/config.js?v=20261110"></script>
-  <script src="js/store.js?v=20261110"></script>
-  <script src="js/main.js?v=20261110"></script>
+  <script src="js/config.js?v=20261111"></script>
+  <script src="js/store.js?v=20261111"></script>
+  <script src="js/main.js?v=20261111"></script>
 </body>
 </html>
