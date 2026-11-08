@@ -76,6 +76,19 @@ cambiar contraseñas. (Supabase permite subir aún más el mínimo; ver punto 3.
 1. Entra a Supabase → **SQL Editor** → **New query**.
 2. Abre `database/security-hardening.sql`, copia **todo** y pégalo.
 3. Pulsa **Run**. Debe terminar sin errores.
+
+> El archivo es **una sola sentencia** y mide **33 líneas** a propósito: algunas
+> herramientas (asistentes con MCP, validadores SQL) solo leen las primeras 100
+> líneas del texto pegado y devuelven “Unterminated dollar-quoted string at
+> Line: 101”. Con 33 líneas ese corte ya no puede ocurrir.
+>
+> **Plan B** si tu herramienta sigue fallando: ejecuta una por una las tres
+> partes, en orden:
+> 1. `database/security-hardening-parte-1-politicas.sql`
+> 2. `database/security-hardening-parte-2-saneamiento.sql`
+> 3. `database/security-hardening-parte-3-guardia.sql`
+>
+> Cada parte es también una sola sentencia y mide menos de 25 líneas.
 4. Prueba de inmediato:
    - Entra como **administrador**: debe ver pedidos, productos y personal.
    - Entra como **repartidor**: debe ver solo sus pedidos y su perfil.
@@ -180,7 +193,8 @@ Cuando esté desplegada:
 | La web no carga el login | Sin internet o Supabase caído | Es intencional: no se permite el modo local con credenciales de prueba |
 | Un producto muestra texto raro | El campo traía HTML | Ya se escapa; si persiste, revisa el dato en Supabase |
 | La consola muestra un error de CSP | Se añadió un script o fuente externa | Añade el dominio a la CSP de los HTML o aloja el recurso en el sitio |
-| Al ejecutar el SQL sale “Unterminated dollar-quoted” | Se copió una versión antigua del archivo (con comillas dollar anidadas) | Vuelve a copiar `database/security-hardening.sql` actualizado y ejecútalo completo |
+| Al ejecutar el SQL sale “Unterminated dollar-quoted string at Line: 101, Column: 1” | La herramienta solo lee las primeras 100 líneas del texto pegado y corta el bloque `do $$ … $$` a la mitad | Usa `database/security-hardening.sql` (33 líneas). Si aún falla, ejecuta en orden las partes 1, 2 y 3 |
+| Al ejecutar el SQL sale “Unterminated dollar-quoted” sin número de línea | Se copió una versión antigua (con comillas dollar anidadas) | Vuelve a copiar `database/security-hardening.sql` actualizado y ejecútalo completo |
 
 ---
 

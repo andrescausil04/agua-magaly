@@ -119,6 +119,12 @@ Después de que todo funcione, ejecuta una vez
   inventados.
 - Cierra la política que permitía crear fichas de personal sin ser admin.
 
+El archivo es **una sola sentencia** y mide **33 líneas** a propósito: algunas
+herramientas solo leen las primeras 100 líneas del texto pegado. Si la tuya
+sigue fallando, ejecuta en orden
+`security-hardening-parte-1-politicas.sql`, `-parte-2-saneamiento.sql` y
+`-parte-3-guardia.sql`.
+
 Los pasos completos (Edge Function, contraseñas, MFA, copias de seguridad)
 están en **`database\SEGURIDAD.md`**.
 
