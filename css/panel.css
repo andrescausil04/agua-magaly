@@ -1867,3 +1867,139 @@
 
   .driver-summary .sum b { font-size: 17px; }
 }
+
+/* --------------------------------------------------------------------------
+   Aviso de seguridad y puerta obligatoria de verificación en dos pasos
+   -------------------------------------------------------------------------- */
+.security-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  border: 1px solid #F2D8A8;
+  border-radius: var(--radius);
+  background: #FFF8E8;
+  color: #7A4E0A;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.security-banner .link-button {
+  color: #7A4E0A;
+  white-space: nowrap;
+}
+
+body.has-twofa-gate {
+  overflow: hidden;
+}
+
+.twofa-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(8, 32, 46, 0.66);
+  overflow-y: auto;
+}
+
+.twofa-gate-card {
+  width: min(470px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 26px 26px 18px;
+  box-shadow: 0 30px 70px rgba(5, 24, 36, 0.4);
+}
+
+.twofa-gate-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.twofa-gate-brand img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: var(--paper);
+  padding: 4px;
+}
+
+.twofa-gate-brand strong {
+  display: block;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.twofa-gate-brand span {
+  display: block;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.twofa-gate-card h2 {
+  margin: 0 0 8px;
+  font-size: 21px;
+  color: var(--ink);
+}
+
+.twofa-gate-lead {
+  margin: 0 0 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.twofa-gate-note {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.twofa-gate-error {
+  display: none;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #F8D7DA;
+  border-radius: var(--radius);
+  background: #FDF2F2;
+  color: #9B2C2C;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.twofa-gate-foot {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .twofa-gate {
+    padding: 12px;
+    place-items: start center;
+  }
+
+  .twofa-gate-card {
+    padding: 22px 18px 14px;
+    max-height: calc(100vh - 24px);
+  }
+
+  .twofa-gate-card h2 { font-size: 19px; }
+}

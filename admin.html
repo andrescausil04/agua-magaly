@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/logo-magaly.png">
-  <link rel="stylesheet" href="css/styles.css?v=20261115">
-  <link rel="stylesheet" href="css/panel.css?v=20261115">
+  <link rel="stylesheet" href="css/styles.css?v=20261116">
+  <link rel="stylesheet" href="css/panel.css?v=20261116">
 </head>
 <body class="panel-shell" id="admin-page">
 
@@ -71,6 +71,12 @@
        CONTENIDO
        ====================================================================== -->
   <main class="panel-main">
+
+    <!-- AVISO DE SEGURIDAD (se muestra si falta desplegar el servicio 2FA) -->
+    <div class="security-banner" id="security-banner" style="display:none">
+      <span>⚠️ La verificación en dos pasos aún no está disponible en el servidor. Actívala cuando se despliegue el servicio de seguridad.</span>
+      <button type="button" class="link-button" data-goto="cuenta">Ver estado</button>
+    </div>
 
     <!-- RESUMEN -->
     <section class="panel-section active" id="section-resumen">
@@ -306,6 +312,27 @@
 
   </main>
 
+  <!-- ======================================================================
+       PUERTA DE SEGURIDAD OBLIGATORIA
+       Se muestra en el primer inicio de sesión del administrador cuando la
+       verificación en dos pasos todavía no está activada en el servidor.
+       ====================================================================== -->
+  <div class="twofa-gate" id="twofa-gate" style="display:none" role="dialog" aria-modal="true" aria-labelledby="twofa-gate-title">
+    <div class="twofa-gate-card">
+      <div class="twofa-gate-brand">
+        <img src="assets/logo-magaly.png" alt="Logo Agua Magaly">
+        <div>
+          <strong>Agua Magaly</strong>
+          <span>Seguridad de la cuenta</span>
+        </div>
+      </div>
+      <div id="twofa-gate-body"></div>
+      <div class="twofa-gate-foot">
+        <button type="button" class="link-button" id="twofa-gate-logout">Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Contenedor de formularios modales (se llena desde admin.js) -->
   <div class="ui-dialog-overlay" id="modal-host" style="display:none">
     <div class="ui-dialog" style="width:min(620px,100%);max-height:90vh;overflow-y:auto">
@@ -313,10 +340,10 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=20261115"></script>
-  <script src="js/store.js?v=20261115"></script>
-  <script src="js/ui.js?v=20261115"></script>
-  <script src="js/auth.js?v=20261115"></script>
-  <script src="js/admin.js?v=20261115"></script>
+  <script src="js/config.js?v=20261116"></script>
+  <script src="js/store.js?v=20261116"></script>
+  <script src="js/ui.js?v=20261116"></script>
+  <script src="js/auth.js?v=20261116"></script>
+  <script src="js/admin.js?v=20261116"></script>
 </body>
 </html>

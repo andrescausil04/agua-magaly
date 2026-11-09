@@ -46,8 +46,10 @@
     bindRouteActions();
     bindPqrsActions();
     bindAccountActions();
+    bindTwofaGate();
     bindShortcuts();
 
+    await maybeRequireTwofa();
     await reload();
     setInterval(() => { store.list('orders').then(orders => { state.orders = orders; render(); }); }, 8000);
   }
@@ -1405,6 +1407,276 @@
     recoveryCodes: []
   };
 
+  // Puerta obligatoria del primer inicio de sesión del administrador.
+  const gate = {
+    open: false,
+    step: 'email',           // email | code | codes
+    email: '',
+    masked: '',
+    codes: []
+  };
+
+  /**
+   * En producción, el administrador no puede usar el panel sin activar la
+   * verificación en dos pasos. Si el servicio aún no está desplegado, se
+   * permite entrar pero se muestra un aviso persistente.
+   */
+  async function maybeRequireTwofa() {
+    if (!(store && store.isCloud && store.isCloud())) return;
+
+    let result = null;
+    try {
+      result = await store.twofaStatus();
+    } catch (err) {
+      result = { ok: false, unavailable: true };
+    }
+
+    const banner = document.getElementById('security-banner');
+
+    if (!result || !result.ok) {
+      if (banner) banner.style.display = 'flex';
+      return;
+    }
+
+    if (banner) banner.style.display = 'none';
+
+    if (!result.enabled) openTwofaGate();
+  }
+
+  function openTwofaGate() {
+    const host = document.getElementById('twofa-gate');
+    if (!host || gate.open) return;
+    gate.open = true;
+    gate.step = 'email';
+    gate.codes = [];
+    host.style.display = 'grid';
+    document.body.classList.add('has-twofa-gate');
+    paintGate();
+  }
+
+  function closeTwofaGate() {
+    const host = document.getElementById('twofa-gate');
+    gate.open = false;
+    if (host) host.style.display = 'none';
+    document.body.classList.remove('has-twofa-gate');
+    const banner = document.getElementById('security-banner');
+    if (banner) banner.style.display = 'none';
+    twofa.loaded = false;
+    ensureTwofa();
+  }
+
+  function gateError(message) {
+    const box = document.getElementById('gate-error');
+    if (!box) return;
+    if (!message) {
+      box.style.display = 'none';
+      box.textContent = '';
+      return;
+    }
+    box.textContent = message;
+    box.style.display = 'block';
+  }
+
+  function paintGate() {
+    const box = document.getElementById('twofa-gate-body');
+    if (!box) return;
+    gateError('');
+
+    if (gate.step === 'code') {
+      box.innerHTML =
+        '<h2 id="twofa-gate-title">Revisa tu correo</h2>' +
+        '<p class="twofa-gate-lead">Enviamos un código de 6 dígitos a <b>' +
+          ui.esc(gate.masked || 'tu correo personal') + '</b>. Vence en 10 minutos.</p>' +
+        '<div id="gate-error" class="twofa-gate-error"></div>' +
+        '<form id="gate-code-form" class="form-grid">' +
+          '<div class="form-field full">' +
+            '<label for="gate-code">Código de 6 dígitos</label>' +
+            '<input id="gate-code" class="code-input" type="text" inputmode="numeric" ' +
+              'maxlength="6" autocomplete="one-time-code" placeholder="000000" required>' +
+          '</div>' +
+          '<div class="full">' +
+            '<button type="submit" class="btn btn-primary" style="width:100%">Activar y entrar al panel</button>' +
+          '</div>' +
+        '</form>' +
+        '<details class="twofa-details">' +
+          '<summary>¿No te llegó? Reenviar código</summary>' +
+          '<form id="gate-resend-form" class="form-grid">' +
+            '<div class="form-field full">' +
+              '<label for="gate-resend-pass">Contraseña actual</label>' +
+              '<input id="gate-resend-pass" type="password" autocomplete="current-password" required>' +
+            '</div>' +
+            '<div class="full">' +
+              '<button type="submit" class="btn btn-ghost" style="width:100%">Reenviar código</button>' +
+            '</div>' +
+          '</form>' +
+        '</details>' +
+        '<div class="login-step-actions">' +
+          '<button type="button" class="link-button" data-gate="back">Cambiar correo</button>' +
+        '</div>';
+      const input = document.getElementById('gate-code');
+      if (input) input.focus();
+      return;
+    }
+
+    if (gate.step === 'codes') {
+      const list = gate.codes.map(c => ui.esc(c)).join('\n');
+      box.innerHTML =
+        '<h2 id="twofa-gate-title">Guarda tus códigos</h2>' +
+        '<p class="twofa-gate-lead">Estos 10 códigos te permiten recuperar el acceso si ' +
+          'pierdes el correo. Cada uno sirve una sola vez y no se volverán a mostrar.</p>' +
+        '<div id="gate-error" class="twofa-gate-error"></div>' +
+        '<div class="twofa-codes">' +
+          '<pre id="gate-code-list">' + list + '</pre>' +
+          '<div class="login-step-actions">' +
+            '<button type="button" class="btn btn-ghost btn-sm" data-gate="download">Descargar</button>' +
+            '<button type="button" class="btn btn-primary btn-sm" data-gate="finish">Ya los guardé</button>' +
+          '</div>' +
+        '</div>' +
+        '<p class="twofa-gate-note">Guárdalos en un lugar seguro, por ejemplo en tu celular o impresos.</p>';
+      return;
+    }
+
+    box.innerHTML =
+      '<h2 id="twofa-gate-title">Protege tu cuenta</h2>' +
+      '<p class="twofa-gate-lead">Antes de usar el panel, activa la verificación en dos pasos. ' +
+        'Te enviaremos un código de 6 dígitos a tu correo personal.</p>' +
+      '<div id="gate-error" class="twofa-gate-error"></div>' +
+      '<form id="gate-email-form" class="form-grid">' +
+        '<div class="form-field full">' +
+          '<label for="gate-email">Correo personal</label>' +
+          '<input id="gate-email" type="email" placeholder="tucorreo@gmail.com" ' +
+            'autocomplete="email" value="' + ui.esc(gate.email || '') + '" required>' +
+          '<span class="hint">Aquí llegarán los códigos. No uses el correo interno @aguamagaly.app.</span>' +
+        '</div>' +
+        '<div class="form-field full">' +
+          '<label for="gate-pass">Contraseña actual</label>' +
+          '<input id="gate-pass" type="password" autocomplete="current-password" required>' +
+        '</div>' +
+        '<div class="full">' +
+          '<button type="submit" class="btn btn-primary" style="width:100%">Enviar código</button>' +
+        '</div>' +
+      '</form>' +
+      '<p class="twofa-gate-note">Solo se pide una vez. Después entrarás con contraseña + código.</p>';
+    const emailInput = document.getElementById('gate-email');
+    if (emailInput && !gate.email) emailInput.focus();
+  }
+
+  function bindTwofaGate() {
+    const host = document.getElementById('twofa-gate');
+    if (!host) return;
+
+    host.addEventListener('submit', onGateSubmit);
+    host.addEventListener('click', onGateClick);
+
+    const logoutBtn = document.getElementById('twofa-gate-logout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => window.MagalyAuth.logout());
+    }
+
+    // La puerta no se puede cerrar con Escape: solo activando 2FA o saliendo.
+    document.addEventListener('keydown', e => {
+      if (gate.open && e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+  }
+
+  async function onGateSubmit(e) {
+    const form = e.target;
+    if (!form || !form.id) return;
+    e.preventDefault();
+    gateError('');
+
+    if (form.id === 'gate-email-form') {
+      const email = (document.getElementById('gate-email').value || '').trim().toLowerCase();
+      const pass = document.getElementById('gate-pass').value;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        gateError('Escribe un correo personal válido.');
+        return;
+      }
+      if (/@aguamagaly\.app$/i.test(email)) {
+        gateError('Usa tu correo personal, no el correo interno de Agua Magaly.');
+        return;
+      }
+      const btn = form.querySelector('button[type="submit"]');
+      twofaBusy(btn, true, 'Enviando…');
+      const result = await store.twofaSetupStart(email, pass);
+      twofaBusy(btn, false);
+      if (!result.ok) {
+        gateError(result.error || 'No se pudo enviar el código. Inténtalo de nuevo.');
+        return;
+      }
+      gate.email = email;
+      gate.masked = result.emailMasked || email;
+      gate.step = 'code';
+      paintGate();
+      return;
+    }
+
+    if (form.id === 'gate-code-form') {
+      const code = (document.getElementById('gate-code').value || '').replace(/\D/g, '');
+      if (code.length !== 6) {
+        gateError('Escribe los 6 dígitos del código.');
+        return;
+      }
+      const btn = form.querySelector('button[type="submit"]');
+      twofaBusy(btn, true, 'Verificando…');
+      const result = await store.twofaSetupVerify(code);
+      twofaBusy(btn, false);
+      if (!result.ok) {
+        gateError(result.error || 'Código incorrecto.');
+        return;
+      }
+      gate.codes = Array.isArray(result.recoveryCodes) ? result.recoveryCodes : [];
+      gate.step = 'codes';
+      paintGate();
+      return;
+    }
+
+    if (form.id === 'gate-resend-form') {
+      const pass = document.getElementById('gate-resend-pass').value;
+      const btn = form.querySelector('button[type="submit"]');
+      twofaBusy(btn, true, 'Enviando…');
+      const result = await store.twofaSetupStart(gate.email, pass);
+      twofaBusy(btn, false);
+      if (!result.ok) {
+        gateError(result.error || 'No se pudo reenviar el código.');
+        return;
+      }
+      gate.masked = result.emailMasked || gate.masked;
+      paintGate();
+      ui.toast('Código reenviado. Revisa tu correo.', 'success');
+    }
+  }
+
+  async function onGateClick(e) {
+    const btn = e.target.closest ? e.target.closest('[data-gate]') : null;
+    if (!btn) return;
+    const action = btn.dataset.gate;
+
+    if (action === 'back') {
+      gate.step = 'email';
+      paintGate();
+      return;
+    }
+
+    if (action === 'download') {
+      downloadCodes(gate.codes);
+      return;
+    }
+
+    if (action === 'finish') {
+      const status = await store.twofaStatus();
+      if (!status.ok || !status.enabled) {
+        gateError('La verificación aún no quedó activa. Inténtalo de nuevo.');
+        return;
+      }
+      closeTwofaGate();
+      ui.toast('Verificación en dos pasos activada', 'success');
+    }
+  }
+
   function bindAccountActions() {
     const form = document.getElementById('account-password-form');
     if (!form) return;
@@ -1729,11 +2001,12 @@
     }
   }
 
-  function downloadRecoveryCodes() {
+  function downloadCodes(codes) {
+    const list = Array.isArray(codes) ? codes : [];
     const text = 'AGUA MAGALY — CÓDIGOS DE RECUPERACIÓN\n' +
       'Usuario: ' + (state.admin ? state.admin.username : '') + '\n' +
       'Guarda este archivo en un lugar seguro. Cada código sirve una sola vez.\n\n' +
-      twofa.recoveryCodes.join('\n') + '\n';
+      list.join('\n') + '\n';
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1743,6 +2016,10 @@
     link.click();
     document.body.removeChild(link);
     setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  function downloadRecoveryCodes() {
+    downloadCodes(twofa.recoveryCodes);
   }
 
   async function onTwofaClick(e) {

@@ -166,8 +166,13 @@ El administrador entra con **contraseña + código de 6 dígitos** que llega a s
 
 Cómo funciona:
 
-1. El administrador abre **Mi cuenta → Verificación en dos pasos**, escribe su
-   correo personal y su contraseña actual.
+0. **La primera vez que el administrador entra al panel** aparece una ventana
+   obligatoria que le pide su **correo personal** y su contraseña actual. No se
+   puede cerrar sin activar la verificación o cerrar sesión. Así el correo no
+   queda como un paso opcional escondido en “Mi cuenta”.
+1. El administrador también puede activarla después desde
+   **Mi cuenta → Verificación en dos pasos**, escribiendo su correo personal y
+   su contraseña actual.
 2. Recibe un código de 6 dígitos, lo escribe y la verificación queda activada.
 3. La web muestra **10 códigos de recuperación**. Hay que guardarlos: cada uno
    sirve **una sola vez** y no se vuelven a mostrar.
