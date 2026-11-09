@@ -27,6 +27,7 @@ window.MagalyAuth = (function () {
   const BLOCK_MS = 15 * 60 * 1000;
 
   let idleTimer = null;
+  let pendingTwoFactor = null;
 
   function store() { return window.MagalyStore; }
 
@@ -197,16 +198,66 @@ window.MagalyAuth = (function () {
 
     // ---- NUBE: Supabase verifica la contraseña ----
     if (store().isCloud()) {
-      const attempt = await store().signIn(store().emailFor(username), password);
-      if (attempt.error) {
-        const msg = String(attempt.error.message || '');
-        if (/invalid login credentials/i.test(msg)) {
+      let started = null;
+      try {
+        started = await store().twofaStart(username, password);
+      } catch (err) {
+        started = null;
+      }
+
+      // Si la función de seguridad aún no está desplegada, se usa el login clásico.
+      if (started && started.unavailable) started = null;
+
+      if (started && !started.ok) {
+        const msg = String(started.error || '');
+        if (/usuario o contraseña|invalid login credentials/i.test(msg)) {
           return { ok: false, error: failedLogin(username, 'Usuario o contraseña incorrectos. Verifica e intenta de nuevo.') };
         }
-        if (/email not confirmed/i.test(msg)) {
-          return { ok: false, error: 'Esta cuenta aún no está confirmada. Pide al administrador que la active.' };
+        return { ok: false, error: msg || 'No se pudo iniciar sesión. Inténtalo de nuevo.' };
+      }
+
+      if (started && started.ok && started.twoFactor) {
+        clearFailures(username);
+        pendingTwoFactor = {
+          challengeId: started.challengeId,
+          username: username,
+          remember: remember !== false,
+          emailMasked: started.emailMasked || ''
+        };
+        return {
+          ok: false,
+          twoFactor: true,
+          challengeId: started.challengeId,
+          emailMasked: started.emailMasked || '',
+          username: username
+        };
+      }
+
+      let classic = !started;
+      if (started && started.ok && !started.twoFactor) {
+        if (started.session) {
+          const applied = await store().setSession(started.session);
+          if (!applied.ok) return { ok: false, error: applied.error };
+        } else {
+          classic = true;
         }
-        return { ok: false, error: 'No se pudo entrar: ' + msg };
+      }
+
+      if (classic) {
+        const attempt = await store().signIn(store().emailFor(username), password);
+        if (attempt.error) {
+          const msg = String(attempt.error.message || '');
+          if (/invalid login credentials/i.test(msg)) {
+            return { ok: false, error: failedLogin(username, 'Usuario o contraseña incorrectos. Verifica e intenta de nuevo.') };
+          }
+          if (/email not confirmed/i.test(msg)) {
+            return { ok: false, error: 'Esta cuenta aún no está confirmada. Pide al administrador que la active.' };
+          }
+          return { ok: false, error: 'No se pudo entrar: ' + msg };
+        }
+        if (attempt.data && attempt.data.session) {
+          store().setRealtimeAuth(attempt.data.session.access_token);
+        }
       }
 
       const me = await store().profile();
@@ -219,9 +270,6 @@ window.MagalyAuth = (function () {
         return { ok: false, error: 'Esta cuenta está desactivada. Contacta al administrador.' };
       }
 
-      if (attempt.data && attempt.data.session) {
-        store().setRealtimeAuth(attempt.data.session.access_token);
-      }
       clearFailures(username);
       writeSession(me, remember);
       return { ok: true, user: me, redirect: homeFor(me.role) };
@@ -246,6 +294,66 @@ window.MagalyAuth = (function () {
     clearFailures(username);
     writeSession(user, remember);
     return { ok: true, user: user, redirect: homeFor(user.role) };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Segundo paso: código por correo y recuperación
+  // ---------------------------------------------------------------------------
+  async function verifyTwoFactor(challengeId, code, remember) {
+    const result = await store().twofaVerify(challengeId, code);
+    if (!result.ok) {
+      return { ok: false, error: result.error || 'Código incorrecto. Inténtalo de nuevo.' };
+    }
+
+    const me = await store().profile();
+    if (!me) {
+      await store().signOut();
+      return { ok: false, error: 'Esta cuenta no tiene acceso al panel. Contacta al administrador.' };
+    }
+    if (!me.active) {
+      await store().signOut();
+      return { ok: false, error: 'Esta cuenta está desactivada. Contacta al administrador.' };
+    }
+
+    clearFailures(me.username);
+    pendingTwoFactor = null;
+    writeSession(me, remember);
+    return { ok: true, user: me, redirect: homeFor(me.role) };
+  }
+
+  async function resendTwoFactor(challengeId) {
+    return store().twofaResend(challengeId);
+  }
+
+  async function recoverTwoFactor(rawUser, code, newPassword, remember) {
+    const username = String(rawUser || '').trim().toLowerCase();
+    if (!username || !code || !newPassword) {
+      return { ok: false, error: 'Escribe tu usuario, el código de recuperación y una contraseña nueva.' };
+    }
+
+    const result = await store().twofaRecover(username, code, newPassword);
+    if (!result.ok) {
+      return { ok: false, error: result.error || 'No se pudo recuperar el acceso.' };
+    }
+
+    if (!result.session) {
+      return { ok: true, passwordReset: true };
+    }
+
+    const me = await store().profile();
+    if (!me) {
+      await store().signOut();
+      return { ok: false, error: 'La cuenta no tiene acceso al panel. Contacta al administrador.' };
+    }
+    if (!me.active) {
+      await store().signOut();
+      return { ok: false, error: 'La cuenta está desactivada. Contacta al administrador.' };
+    }
+
+    clearFailures(me.username);
+    pendingTwoFactor = null;
+    writeSession(me, remember);
+    return { ok: true, user: me, redirect: homeFor(me.role) };
   }
 
   // ---------------------------------------------------------------------------
@@ -304,6 +412,16 @@ window.MagalyAuth = (function () {
    */
   async function changePassword(userId, currentPass, newPass) {
     if (store() && store().isCloud && store().isCloud()) {
+      const me = await store().profile();
+      if (me && me.role === 'admin') {
+        const status = await store().twofaStatus();
+        if (status && status.ok && status.enabled) {
+          return store().twofaChangePassword(currentPass, newPass);
+        }
+        if (status && !status.ok && !status.unavailable) {
+          return { ok: false, error: status.error || 'No se pudo verificar la seguridad de la cuenta.' };
+        }
+      }
       return store().updatePassword(currentPass, newPass);
     }
 
@@ -336,6 +454,81 @@ window.MagalyAuth = (function () {
     const errorBox = document.getElementById('login-error');
     const submitBtn = form.querySelector('button[type="submit"]');
     const demoBox = document.getElementById('login-demo');
+
+    const codeForm = document.getElementById('login-code-form');
+    const codeInput = document.getElementById('login-code');
+    const codeError = document.getElementById('login-code-error');
+    const codeHint = document.getElementById('login-code-hint');
+    const codeSubmit = codeForm ? codeForm.querySelector('button[type="submit"]') : null;
+    const codeResend = document.getElementById('login-code-resend');
+    const codeBack = document.getElementById('login-code-back');
+
+    const recoveryWrap = document.getElementById('login-recovery-wrap');
+    const recoveryLink = document.getElementById('login-recovery-link');
+    const recoveryForm = document.getElementById('login-recovery-form');
+    const recoveryError = document.getElementById('login-recovery-error');
+    const recoveryBack = document.getElementById('login-recovery-back');
+    const recoverySubmit = recoveryForm ? recoveryForm.querySelector('button[type="submit"]') : null;
+
+    let rememberChoice = true;
+    let challengeId = '';
+
+    function showError(box, message) {
+      if (!box) return;
+      box.textContent = message;
+      box.style.display = 'block';
+    }
+
+    function hideError(box) {
+      if (!box) return;
+      box.style.display = 'none';
+    }
+
+    function setBusy(btn, busy, label) {
+      if (!btn) return;
+      btn.disabled = busy;
+      if (busy) {
+        btn.dataset.label = btn.dataset.label || btn.textContent;
+        btn.textContent = label || 'Un momento…';
+      } else {
+        btn.textContent = btn.dataset.label || btn.textContent;
+      }
+    }
+
+    function showLoginStep() {
+      form.style.display = '';
+      if (codeForm) codeForm.style.display = 'none';
+      if (recoveryForm) recoveryForm.style.display = 'none';
+      if (recoveryWrap) recoveryWrap.style.display = '';
+      hideError(codeError);
+      hideError(recoveryError);
+      challengeId = '';
+    }
+
+    function showCodeStep(result) {
+      challengeId = result.challengeId || '';
+      form.style.display = 'none';
+      if (recoveryForm) recoveryForm.style.display = 'none';
+      if (recoveryWrap) recoveryWrap.style.display = 'none';
+      if (codeForm) codeForm.style.display = '';
+      if (codeHint) {
+        codeHint.textContent = result.emailMasked
+          ? 'Enviamos un código de 6 dígitos a ' + result.emailMasked + '. Vence en 10 minutos.'
+          : 'Enviamos un código de 6 dígitos a tu correo personal. Vence en 10 minutos.';
+      }
+      hideError(codeError);
+      if (codeInput) { codeInput.value = ''; codeInput.focus(); }
+    }
+
+    function showRecoveryStep() {
+      form.style.display = 'none';
+      if (codeForm) codeForm.style.display = 'none';
+      if (recoveryWrap) recoveryWrap.style.display = 'none';
+      if (recoveryForm) recoveryForm.style.display = '';
+      hideError(recoveryError);
+      const input = document.getElementById('recovery-user');
+      if (input) input.focus();
+    }
 
     // Si llegó aquí por el cierre automático de inactividad, se lo explicamos.
     let idleLogout = '';
@@ -379,18 +572,15 @@ window.MagalyAuth = (function () {
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      if (errorBox) errorBox.style.display = 'none';
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.dataset.label = submitBtn.dataset.label || submitBtn.textContent;
-        submitBtn.textContent = 'Verificando…';
-      }
+      hideError(errorBox);
+      setBusy(submitBtn, true, 'Verificando…');
 
       const remember = document.getElementById('login-remember');
+      rememberChoice = remember ? remember.checked : true;
       const result = await login(
         document.getElementById('login-user').value,
         document.getElementById('login-pass').value,
-        remember ? remember.checked : true
+        rememberChoice
       );
 
       if (result.ok) {
@@ -398,17 +588,109 @@ window.MagalyAuth = (function () {
         return;
       }
 
-      if (errorBox) {
-        errorBox.textContent = result.error;
-        errorBox.style.display = 'block';
+      setBusy(submitBtn, false);
+
+      if (result.twoFactor) {
+        showCodeStep(result);
+        return;
       }
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = submitBtn.dataset.label || 'Entrar';
-      }
+
+      showError(errorBox, result.error);
       const pass = document.getElementById('login-pass');
       if (pass) { pass.focus(); pass.select(); }
     });
+
+    if (codeForm) {
+      codeForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        hideError(codeError);
+        const code = (codeInput ? codeInput.value : '').replace(/\D/g, '');
+        if (code.length !== 6) {
+          showError(codeError, 'Escribe los 6 dígitos del código.');
+          if (codeInput) codeInput.focus();
+          return;
+        }
+        setBusy(codeSubmit, true, 'Verificando…');
+        const result = await verifyTwoFactor(challengeId, code, rememberChoice);
+        if (result.ok) {
+          window.location.href = result.redirect;
+          return;
+        }
+        setBusy(codeSubmit, false);
+        showError(codeError, result.error);
+        if (codeInput) { codeInput.focus(); codeInput.select(); }
+      });
+    }
+
+    if (codeResend) {
+      codeResend.addEventListener('click', async () => {
+        hideError(codeError);
+        setBusy(codeResend, true, 'Enviando…');
+        const result = await resendTwoFactor(challengeId);
+        setBusy(codeResend, false);
+        if (!result.ok) {
+          showError(codeError, result.error || 'No se pudo reenviar el código.');
+          return;
+        }
+        if (codeHint) {
+          codeHint.textContent = 'Código reenviado' +
+            (result.emailMasked ? ' a ' + result.emailMasked : '') + '. Revisa tu correo.';
+        }
+        if (codeInput) { codeInput.value = ''; codeInput.focus(); }
+      });
+    }
+
+    if (codeBack) {
+      codeBack.addEventListener('click', () => {
+        showLoginStep();
+        const pass = document.getElementById('login-pass');
+        if (pass) { pass.focus(); pass.select(); }
+      });
+    }
+
+    if (recoveryLink) {
+      recoveryLink.addEventListener('click', showRecoveryStep);
+    }
+
+    if (recoveryBack) {
+      recoveryBack.addEventListener('click', () => {
+        showLoginStep();
+        const user = document.getElementById('login-user');
+        if (user) user.focus();
+      });
+    }
+
+    if (recoveryForm) {
+      recoveryForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        hideError(recoveryError);
+        const username = document.getElementById('recovery-user').value;
+        const code = document.getElementById('recovery-code').value;
+        const next = document.getElementById('recovery-pass').value;
+        const repeat = document.getElementById('recovery-repeat').value;
+        if (next !== repeat) {
+          showError(recoveryError, 'Las contraseñas nuevas no coinciden.');
+          return;
+        }
+        setBusy(recoverySubmit, true, 'Recuperando…');
+        const result = await recoverTwoFactor(username, code, next, true);
+        if (result.ok && result.redirect) {
+          window.location.href = result.redirect;
+          return;
+        }
+        setBusy(recoverySubmit, false);
+        if (result.ok && result.passwordReset) {
+          const userInput = document.getElementById('login-user');
+          if (userInput) userInput.value = username;
+          showLoginStep();
+          showError(errorBox, 'Contraseña actualizada. La verificación en dos pasos quedó desactivada. Inicia sesión con tu nueva contraseña.');
+          const pass = document.getElementById('login-pass');
+          if (pass) { pass.value = ''; pass.focus(); }
+          return;
+        }
+        showError(recoveryError, result.error);
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -434,6 +716,9 @@ window.MagalyAuth = (function () {
     currentUser,
     requireRole,
     changePassword,
+    verifyTwoFactor,
+    resendTwoFactor,
+    recoverTwoFactor,
     homeFor,
     pathTo,
     readSession

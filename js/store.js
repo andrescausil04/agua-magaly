@@ -294,6 +294,7 @@ window.MagalyStore = (function () {
       username: (raw.username || '').toLowerCase(),
       hash: raw.hash || '',
       phone: raw.phone || '',
+      email: raw.email || '',
       active: raw.active !== false,
       color: raw.color || '#1C7FA8',
       createdAt: raw.createdAt || nowIso()
@@ -309,6 +310,7 @@ window.MagalyStore = (function () {
       username: (raw.username || '').toLowerCase(),
       hash: '',
       phone: raw.phone || '',
+      email: raw.email || '',
       active: raw.active !== false,
       color: raw.color || '#1C7FA8',
       createdAt: raw.created_at || nowIso()
@@ -629,6 +631,7 @@ window.MagalyStore = (function () {
         username: record.username,
         name: record.name,
         phone: record.phone || '',
+        email: record.email || '',
         role: record.role === 'admin' ? 'admin' : 'driver',
         color: record.color || '#1C7FA8',
         active: record.active !== false
@@ -781,8 +784,16 @@ window.MagalyStore = (function () {
     const issue = passwordIssue(newPass);
     if (issue) return { ok: false, error: issue };
 
+    let authEmail = emailFor(me.username);
+    try {
+      const userRes = await sb.auth.getUser();
+      if (userRes && userRes.data && userRes.data.user && userRes.data.user.email) {
+        authEmail = userRes.data.user.email;
+      }
+    } catch (err) { /* usa el correo del usuario */ }
+
     const check = await sb.auth.signInWithPassword({
-      email: emailFor(me.username),
+      email: authEmail,
       password: String(currentPass || '')
     });
     if (check.error) return { ok: false, error: 'La contraseña actual no es correcta.' };
@@ -790,6 +801,144 @@ window.MagalyStore = (function () {
     const { error } = await sb.auth.updateUser({ password: String(newPass) });
     if (error) return { ok: false, error: friendlyAuthError(error.message) };
     return { ok: true };
+  }
+
+  // ==========================================================================
+  // VERIFICACIÓN EN DOS PASOS (Edge Function staff-2fa)
+  // ==========================================================================
+  async function functionError(error) {
+    try {
+      const context = error && error.context;
+      if (context && typeof context.json === 'function') {
+        const body = await context.json();
+        if (body && body.error) {
+          return { message: String(body.error), status: Number(context.status || 0) };
+        }
+      }
+      if (context && context.status) {
+        return { message: String((error && error.message) || ''), status: Number(context.status) };
+      }
+    } catch (err) { /* usa el mensaje genérico */ }
+    return { message: String((error && (error.message || error)) || ''), status: 0 };
+  }
+
+  async function callStaff2fa(action, payload) {
+    await ready();
+    if (!cloudActive) {
+      return { ok: false, error: 'Sin conexión a la nube.', unavailable: true };
+    }
+    try {
+      const { data, error } = await sb.functions.invoke('staff-2fa', {
+        body: Object.assign({ action: action }, payload || {})
+      });
+      if (error) {
+        const info = await functionError(error);
+        const unavailable = info.status === 404 || /failed to send|fetch|not found/i.test(info.message);
+        return {
+          ok: false,
+          error: info.message || 'No se pudo completar la verificación.',
+          unavailable: unavailable
+        };
+      }
+      if (!data || typeof data !== 'object') {
+        return { ok: false, error: 'Respuesta no válida del servidor.' };
+      }
+      return data;
+    } catch (err) {
+      const msg = String((err && err.message) || err || '');
+      return {
+        ok: false,
+        error: msg || 'No se pudo conectar con el servicio de seguridad.',
+        unavailable: /fetch|network|failed/i.test(msg)
+      };
+    }
+  }
+
+  async function setSession(session) {
+    await ready();
+    if (!cloudActive) return { ok: false, error: 'Sin conexión a la nube.' };
+    if (!session || !session.access_token || !session.refresh_token) {
+      return { ok: false, error: 'La sesión no es válida. Inténtalo de nuevo.' };
+    }
+    const { data, error } = await sb.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token
+    });
+    if (error) return { ok: false, error: friendlyAuthError(error.message) };
+    if (data && data.session) setRealtimeAuth(data.session.access_token);
+    return { ok: true, session: data && data.session };
+  }
+
+  function twofaStart(username, password) {
+    return callStaff2fa('start', { username: username, password: password });
+  }
+
+  async function twofaVerify(challengeId, code) {
+    const result = await callStaff2fa('verify', { challengeId: challengeId, code: code });
+    if (!result.ok) return result;
+    if (!result.tokenHash) {
+      return { ok: false, error: 'No se pudo completar el inicio de sesión. Inténtalo de nuevo.' };
+    }
+    const { data, error } = await sb.auth.verifyOtp({
+      type: 'magiclink',
+      token_hash: result.tokenHash
+    });
+    if (error) return { ok: false, error: friendlyAuthError(error.message) };
+    if (data && data.session) setRealtimeAuth(data.session.access_token);
+    return { ok: true, session: data && data.session };
+  }
+
+  function twofaResend(challengeId) {
+    return callStaff2fa('resend', { challengeId: challengeId });
+  }
+
+  function twofaStatus() {
+    return callStaff2fa('status', {});
+  }
+
+  function twofaSetupStart(email, password) {
+    return callStaff2fa('setup-start', { email: email, password: password });
+  }
+
+  function twofaSetupVerify(code) {
+    return callStaff2fa('setup-verify', { code: code });
+  }
+
+  function twofaDisable(password) {
+    return callStaff2fa('disable', { password: password });
+  }
+
+  function twofaRegenerate(password) {
+    return callStaff2fa('regenerate', { password: password });
+  }
+
+  function twofaChangePassword(currentPassword, newPassword) {
+    return callStaff2fa('change-password', {
+      currentPassword: currentPassword,
+      newPassword: newPassword
+    });
+  }
+
+  async function twofaRecover(username, code, newPassword) {
+    const result = await callStaff2fa('recover', {
+      username: username,
+      code: code,
+      newPassword: newPassword
+    });
+    if (!result.ok) return result;
+    if (result.session) {
+      const applied = await setSession(result.session);
+      if (!applied.ok) return applied;
+      return { ok: true, passwordReset: true, session: applied.session };
+    }
+    return { ok: true, passwordReset: true };
+  }
+
+  function adminResetStaff(staffId, newPassword) {
+    return callStaff2fa('admin-reset', {
+      staffId: staffId,
+      newPassword: newPassword
+    });
   }
 
   /**
@@ -816,6 +965,7 @@ window.MagalyStore = (function () {
           username: username,
           name: input.name || username,
           phone: input.phone || '',
+          email: input.email || '',
           password: password,
           role: input.role === 'admin' ? 'admin' : 'driver',
           color: input.color || '#1C7FA8',
@@ -872,6 +1022,7 @@ window.MagalyStore = (function () {
       username: username,
       name: input.name || username,
       phone: input.phone || '',
+      email: input.email || '',
       role: input.role === 'admin' ? 'admin' : 'driver',
       color: input.color || '#1C7FA8',
       active: input.active !== false
@@ -998,6 +1149,18 @@ window.MagalyStore = (function () {
     signOut,
     profile,
     updatePassword,
+    setSession,
+    twofaStart,
+    twofaVerify,
+    twofaResend,
+    twofaStatus,
+    twofaSetupStart,
+    twofaSetupVerify,
+    twofaDisable,
+    twofaRegenerate,
+    twofaChangePassword,
+    twofaRecover,
+    adminResetStaff,
     createStaffAccount,
     setRealtimeAuth,
     // Helpers de formato compartidos por los paneles

@@ -119,7 +119,10 @@ cambiar contraseñas. (Supabase permite subir aún más el mínimo; ver punto 3.
 > 3. `database/security-hardening-parte-3-guardia.sql`
 >
 > Cada parte es también una sola sentencia y mide menos de 25 líneas.
-4. Prueba de inmediato:
+4. Ejecuta también **`database/twofa.sql`** (una sola sentencia). Agrega el
+   correo al personal y crea la tabla privada `staff_2fa`, que solo puede usar
+   la Edge Function de seguridad.
+5. Prueba de inmediato:
    - Entra como **administrador**: debe ver pedidos, productos y personal.
    - Entra como **repartidor**: debe ver solo sus pedidos y su perfil.
    - Haz un pedido de prueba desde la tienda: debe aparecer “Pendiente” y sin
@@ -156,11 +159,50 @@ En **Authentication → Policies** (o **Settings → Auth** según la versión):
 - Activar **“Prevent use of leaked passwords”** si está disponible.
 - Caducidad de sesión: un valor razonable (7–30 días).
 
-### 3.3 MFA para el administrador
+### 3.3 Verificación en dos pasos por correo (administrador)
 
-En **Authentication → Multi-Factor Authentication**, activa **TOTP**. Luego,
-desde el perfil del administrador, vincula una app como Google Authenticator o
-Authy. Así, aunque alguien robe la contraseña, no puede entrar sin el código.
+El administrador entra con **contraseña + código de 6 dígitos** que llega a su
+**correo personal**. Los repartidores siguen entrando solo con contraseña.
+
+Cómo funciona:
+
+1. El administrador abre **Mi cuenta → Verificación en dos pasos**, escribe su
+   correo personal y su contraseña actual.
+2. Recibe un código de 6 dígitos, lo escribe y la verificación queda activada.
+3. La web muestra **10 códigos de recuperación**. Hay que guardarlos: cada uno
+   sirve **una sola vez** y no se vuelven a mostrar.
+4. En cada inicio de sesión, después de la contraseña se pide el código. Vence
+   en 10 minutos y admite 5 intentos.
+5. Si el administrador pierde el correo, puede entrar con un **código de
+   recuperación** desde el enlace “Perdí el acceso”. Ese proceso le pide una
+   contraseña nueva y **desactiva** la verificación en dos pasos.
+6. Si olvida la contraseña y no tiene códigos, se puede restablecer desde
+   **Supabase → Authentication → Users** o desde el panel con
+   **Restablecer acceso** (para repartidores).
+
+**Importante:** al activar la verificación, la contraseña real del
+administrador deja de funcionar directamente en Supabase. Se guarda solo su
+hash en la tabla privada `staff_2fa`. Por eso el inicio de sesión del
+administrador **necesita** la Edge Function `staff-2fa` desplegada.
+
+### 3.3.1 Correo saliente (obligatorio para 2FA)
+
+La Edge Function `staff-2fa` envía los códigos con **Resend** o **SendGrid**.
+Sin un proveedor configurado, la verificación no se puede activar.
+
+En **Supabase → Edge Functions → Secrets** agrega **una** de estas parejas:
+
+| Proveedor | Secretos |
+|---|---|
+| Resend (recomendado) | `RESEND_API_KEY` y `RESEND_FROM` |
+| SendGrid | `SENDGRID_API_KEY` y `SENDGRID_FROM` |
+
+`RESEND_FROM` debe ser un remitente verificado en Resend (por ejemplo
+`Agua Magaly <codigos@tudominio.com>`). Mientras no tengas dominio propio,
+Resend permite usar su remitente de pruebas.
+
+> Nunca pongas estas claves en `js/config.js` ni en GitHub. Viven solo en
+> Supabase.
 
 ### 3.4 Límites de intentos
 
@@ -216,6 +258,32 @@ Cuando esté desplegada:
 
 ---
 
+## 4b. Desplegar la Edge Function `staff-2fa` (obligatorio para 2FA)
+
+La función está en `supabase/functions/staff-2fa/index.ts`. Valida contraseñas,
+genera y envía los códigos, guarda los hashes y gestiona la recuperación.
+
+Requisitos: los secretos de correo del punto 3.3.1 ya configurados.
+
+```bash
+supabase functions deploy staff-2fa
+```
+
+Después:
+
+1. Entra al panel como administrador.
+2. Abre **Mi cuenta → Verificación en dos pasos**.
+3. Escribe tu correo personal y tu contraseña actual.
+4. Copia el código recibido, actívala y **descarga los 10 códigos de
+   recuperación**.
+5. Cierra sesión y comprueba que ahora se pide el código.
+
+Si el servicio no está desplegado, el login del administrador sigue funcionando
+con el método clásico (sin segundo paso) y la tarjeta de “Mi cuenta” muestra un
+aviso.
+
+---
+
 ## 5. Qué hacer si algo se rompe
 
 | Síntoma | Causa probable | Solución |
@@ -225,6 +293,9 @@ Cuando esté desplegada:
 | La web no carga el login | Sin internet o Supabase caído | Es intencional: no se permite el modo local con credenciales de prueba |
 | Un producto muestra texto raro | El campo traía HTML | Ya se escapa; si persiste, revisa el dato en Supabase |
 | La consola muestra un error de CSP | Se añadió un script o fuente externa | Añade el dominio a la CSP de los HTML o aloja el recurso en el sitio |
+| Al activar 2FA dice “Falta configurar el correo saliente” | No hay proveedor de correo en Supabase | Configura `RESEND_API_KEY`/`RESEND_FROM` o `SENDGRID_*` (punto 3.3.1) |
+| El administrador con 2FA no puede entrar y no recibe el código | El correo no llega o el proveedor está caído | Entra con un código de recuperación o restablece la contraseña desde Supabase → Authentication → Users |
+| “Mi cuenta” dice que la verificación no está activa en el servidor | Falta desplegar `staff-2fa` | Despliega la función (punto 4b) |
 | Al ejecutar el SQL sale “Unterminated dollar-quoted string at Line: 101, Column: 1” | La herramienta solo lee las primeras 100 líneas del texto pegado y corta el bloque `do $$ … $$` a la mitad | Usa `database/security-hardening.sql` (33 líneas). Si aún falla, ejecuta en orden las partes 1, 2 y 3 |
 | Al ejecutar el SQL sale “Unterminated dollar-quoted” sin número de línea | Se copió una versión antigua (con comillas dollar anidadas) | Vuelve a copiar `database/security-hardening.sql` actualizado y ejecútalo completo |
 | Al ejecutar `storage-productos.sql` sale “Only singular query allowed” | La herramienta solo acepta una sentencia por ejecución | Usa la versión actual del archivo: es **una sola sentencia** `do $$ … $$` de 27 líneas |
@@ -238,8 +309,13 @@ Cuando esté desplegada:
 - [ ] Probé el panel de repartidor con un pedido asignado.
 - [ ] Hice un pedido de prueba desde la tienda.
 - [ ] Desplegué la Edge Function `create-staff`.
+- [ ] Desplegué la Edge Function `staff-2fa`.
+- [ ] Configuré `RESEND_API_KEY`/`RESEND_FROM` o `SENDGRID_*` en Supabase.
+- [ ] Ejecuté `database/twofa.sql` sin errores.
 - [ ] Cerré el registro público en Supabase.
-- [ ] Activé la política de contraseñas y MFA del administrador.
+- [ ] Activé la verificación en dos pasos del administrador y guardé los 10
+      códigos de recuperación.
+- [ ] Activé la política de contraseñas en Supabase.
 - [ ] Revisé que `js/config.js` no tenga la clave `service_role`.
 - [ ] Programé una copia de seguridad.
 - [ ] Probé el cierre por inactividad (20 minutos) y el bloqueo tras 5 intentos.

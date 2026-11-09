@@ -1666,7 +1666,9 @@ footer {
   padding: 14px;
 }
 
-#login-error {
+#login-error,
+#login-code-error,
+#login-recovery-error {
   font-size: 14px;
   font-weight: 600;
   color: #B23B3B;
@@ -1677,6 +1679,141 @@ footer {
   text-align: center;
   margin-top: 16px;
   display: none;
+}
+
+/* Pasos de verificación en dos pasos y recuperación */
+.login-step-hint {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.login-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 18px;
+  margin-top: 16px;
+}
+
+.link-button {
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue-mid);
+  cursor: pointer;
+  text-decoration: underline;
+  border-radius: 4px;
+}
+
+.link-button:hover,
+.link-button:focus-visible {
+  color: var(--blue-deep);
+  outline: none;
+}
+
+.link-button:disabled {
+  color: var(--ink-soft);
+  cursor: default;
+  text-decoration: none;
+}
+
+.code-input {
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 10px;
+  padding-left: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 32px 22px;
+  }
+
+  .code-input {
+    font-size: 22px;
+    letter-spacing: 6px;
+    padding-left: 12px;
+  }
+}
+
+/* Verificación en dos pasos dentro de «Mi cuenta» */
+.twofa-details {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-top: 14px;
+  background: var(--paper);
+}
+
+.twofa-details summary {
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--blue-deep);
+  list-style: none;
+}
+
+.twofa-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.twofa-details summary::before {
+  content: '+';
+  display: inline-block;
+  width: 18px;
+  font-weight: 700;
+  color: var(--blue-mid);
+}
+
+.twofa-details[open] summary::before {
+  content: '–';
+}
+
+.twofa-details .form-grid {
+  margin-top: 12px;
+}
+
+.twofa-codes {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.twofa-codes p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
+}
+
+.twofa-codes pre {
+  background: var(--white);
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin: 0 0 4px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.7;
+  letter-spacing: 1px;
+  text-align: center;
+  color: var(--blue-deep);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .auth-note {

@@ -9,6 +9,8 @@
 --                       inicio de sesión de Supabase.
 --   * public.records  → todos los datos de la app (pedidos, PQRS, productos,
 --                       rutas y ajustes), guardados como JSON.
+--   * public.staff_2fa → datos privados de la verificación en dos pasos
+--                       (solo los usa la Edge Function `staff-2fa`).
 --
 -- Seguridad:
 --   * Cualquier visitante puede CREAR pedidos y PQRS (formulario público),
@@ -28,11 +30,15 @@ create table if not exists public.staff (
   username    text unique not null,
   name        text not null default '',
   phone       text not null default '',
+  email       text not null default '',
   role        text not null default 'driver' check (role in ('admin', 'driver')),
   color       text not null default '#1C7FA8',
   active      boolean not null default true,
   created_at  timestamptz not null default now()
 );
+
+-- Para bases ya creadas (la columna email se agregó con la verificación 2FA).
+alter table public.staff add column if not exists email text not null default '';
 
 -- ----------------------------------------------------------------------------
 -- 2. DATOS DE LA APLICACIÓN
@@ -47,6 +53,45 @@ create table if not exists public.records (
 
 create index if not exists records_entity_updated_idx
   on public.records (entity, updated_at desc);
+
+-- ----------------------------------------------------------------------------
+-- 2b. VERIFICACIÓN EN DOS PASOS (privada)
+-- ----------------------------------------------------------------------------
+-- Guarda el correo personal del administrador, el hash de su contraseña real,
+-- los códigos de un solo uso y los códigos de recuperación. El navegador NO
+-- puede leer esta tabla: solo la Edge Function `staff-2fa` con service_role.
+create table if not exists public.staff_2fa (
+  staff_id              uuid primary key references public.staff (id) on delete cascade,
+  email                 text not null default '',
+  enabled               boolean not null default false,
+  password_salt         text,
+  password_hash         text,
+  pending_email         text,
+  pending_hash          text,
+  pending_salt          text,
+  pending_expires       timestamptz,
+  pending_attempts      integer not null default 0,
+  pending_sent_at       timestamptz,
+  pending_password_salt text,
+  pending_password_hash text,
+  otp_hash              text,
+  otp_salt              text,
+  otp_expires           timestamptz,
+  otp_attempts          integer not null default 0,
+  otp_sent_at           timestamptz,
+  otp_sends             integer not null default 0,
+  otp_window_start      timestamptz,
+  challenge_id          uuid,
+  challenge_expires     timestamptz,
+  recovery_hashes       jsonb not null default '[]'::jsonb,
+  recovery_attempts     integer not null default 0,
+  recovery_last_attempt timestamptz,
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
+);
+
+create index if not exists staff_2fa_challenge_idx
+  on public.staff_2fa (challenge_id);
 
 -- ----------------------------------------------------------------------------
 -- 3. FUNCIONES DE APOYO
@@ -89,11 +134,16 @@ create trigger records_touch
 -- ----------------------------------------------------------------------------
 -- 4. PERMISOS Y SEGURIDAD POR FILAS (RLS)
 -- ----------------------------------------------------------------------------
-alter table public.staff   enable row level security;
-alter table public.records enable row level security;
+alter table public.staff     enable row level security;
+alter table public.records   enable row level security;
+alter table public.staff_2fa enable row level security;
 
 grant select, insert, update, delete on public.records to anon, authenticated;
 grant select, insert, update, delete on public.staff   to authenticated;
+
+-- La verificación 2FA solo la usa la Edge Function con service_role.
+revoke all on public.staff_2fa from anon, authenticated;
+grant all on public.staff_2fa to service_role;
 
 -- Personal: cada quien ve su ficha; solo el administrador ve y gestiona todo.
 drop policy if exists "staff_read" on public.staff;

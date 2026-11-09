@@ -1027,6 +1027,12 @@
         hint: 'Sin espacios ni mayúsculas. Con este usuario entra el repartidor.'
       }) +
       field('f-dphone', 'Teléfono', { value: d.phone || '', placeholder: 'Ej. 305 413 6677' }) +
+      field('f-demail', 'Correo personal (opcional)', {
+        type: 'email',
+        value: d.email || '',
+        placeholder: 'Ej. carlos@gmail.com',
+        hint: 'Servirá para recuperar el acceso y enviar avisos.'
+      }) +
       passwordField +
       field('f-dactive', 'Estado', {
         type: 'select',
@@ -1067,6 +1073,7 @@
 
         const name = form.querySelector('#f-dname').value.trim();
         const phone = form.querySelector('#f-dphone').value.trim();
+        const email = form.querySelector('#f-demail').value.trim();
         const color = form.querySelector('#f-dcolor').value;
         const active = form.querySelector('#f-dactive').value === 'true';
 
@@ -1076,6 +1083,7 @@
             username: username,
             name: name,
             phone: phone,
+            email: email,
             password: pass,
             role: 'driver',
             color: color,
@@ -1096,6 +1104,7 @@
           name: name,
           username: username,
           phone: phone,
+          email: email,
           active: active,
           color: color,
           hash: driver ? driver.hash : '',
@@ -1105,6 +1114,45 @@
         await store.upsert('users', record);
         await reload();
         ui.toast(driver ? 'Repartidor actualizado' : 'Repartidor creado', 'success');
+      }
+    });
+  }
+
+  function openResetDriverForm(driver) {
+    const body = '<div class="form-grid">' +
+      '<div class="form-field full"><span class="hint">Se asignará una contraseña nueva a ' +
+        ui.esc(driver.name) + ' y se desactivará su verificación en dos pasos. ' +
+        'Comunícale la contraseña por un medio seguro.</span></div>' +
+      field('f-reset-pass', 'Contraseña nueva *', {
+        required: true, type: 'text', placeholder: 'Mínimo 8 caracteres', full: true
+      }) +
+      field('f-reset-repeat', 'Repetir contraseña *', {
+        required: true, type: 'text', placeholder: 'Repite la contraseña', full: true
+      }) +
+    '</div>';
+
+    openModal({
+      title: 'Restablecer acceso',
+      subtitle: 'Para cuando el repartidor olvida su contraseña.',
+      submitLabel: 'Restablecer',
+      body: body,
+      onSubmit: async form => {
+        const pass = form.querySelector('#f-reset-pass').value;
+        const repeat = form.querySelector('#f-reset-repeat').value;
+        if (pass !== repeat) {
+          ui.toast('Las contraseñas no coinciden', 'error');
+          return false;
+        }
+        if (pass.length < 8) {
+          ui.toast('La contraseña debe tener al menos 8 caracteres', 'error');
+          return false;
+        }
+        const result = await store.adminResetStaff(driver.id, pass);
+        if (!result.ok) {
+          ui.toast(result.error || 'No se pudo restablecer el acceso.', 'error');
+          return false;
+        }
+        ui.toast('Acceso restablecido. Comunica la contraseña a ' + driver.name + '.', 'success');
       }
     });
   }
@@ -1141,6 +1189,9 @@
         '<div class="driver-card-foot">' +
           '<button type="button" class="btn btn-ghost btn-sm" data-edit-driver="' + ui.esc(d.id) + '" style="color:var(--blue-deep);border-color:var(--rule)">Editar</button>' +
           '<button type="button" class="btn btn-ghost btn-sm" data-see-driver="' + ui.esc(d.id) + '" style="color:var(--blue-deep);border-color:var(--rule)">Ver pedidos</button>' +
+          (store.isCloud && store.isCloud()
+            ? '<button type="button" class="btn btn-ghost btn-sm" data-reset-driver="' + ui.esc(d.id) + '" style="color:var(--blue-deep);border-color:var(--rule)">Restablecer acceso</button>'
+            : '') +
           '<button type="button" class="btn btn-danger btn-sm" data-del-driver="' + ui.esc(d.id) + '" style="margin-left:auto">🗑️</button>' +
         '</div>' +
       '</article>';
@@ -1150,6 +1201,13 @@
       btn.addEventListener('click', () => {
         const d = state.users.find(u => u.id === btn.dataset.editDriver);
         if (d) openDriverForm(d);
+      });
+    });
+
+    grid.querySelectorAll('[data-reset-driver]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const d = state.users.find(u => u.id === btn.dataset.resetDriver);
+        if (d) openResetDriverForm(d);
       });
     });
 
@@ -1337,6 +1395,16 @@
   }
 
   // ------------------------------ Mi cuenta ------------------------------
+  const twofa = {
+    loaded: false,
+    loading: false,
+    status: null,
+    view: 'status',          // status | pending | codes
+    pendingEmail: '',
+    pendingMasked: '',
+    recoveryCodes: []
+  };
+
   function bindAccountActions() {
     const form = document.getElementById('account-password-form');
     if (!form) return;
@@ -1360,6 +1428,347 @@
       form.reset();
       ui.toast('Contraseña actualizada', 'success');
     });
+
+    const box = document.getElementById('account-2fa');
+    if (!box) return;
+
+    box.addEventListener('submit', onTwofaSubmit);
+    box.addEventListener('click', onTwofaClick);
+  }
+
+  function twofaError(message) {
+    const box = document.getElementById('twofa-error');
+    if (!box) return;
+    if (!message) {
+      box.style.display = 'none';
+      box.textContent = '';
+      return;
+    }
+    box.textContent = message;
+    box.style.display = 'block';
+  }
+
+  function twofaBusy(btn, busy, label) {
+    if (!btn) return;
+    btn.disabled = busy;
+    if (busy) {
+      btn.dataset.label = btn.dataset.label || btn.textContent;
+      btn.textContent = label || 'Un momento…';
+    } else {
+      btn.textContent = btn.dataset.label || btn.textContent;
+    }
+  }
+
+  async function ensureTwofa() {
+    if (twofa.loaded || twofa.loading) return;
+    const box = document.getElementById('account-2fa');
+    if (!box || !state.admin) return;
+
+    if (!(store && store.isCloud && store.isCloud())) {
+      twofa.loaded = true;
+      twofa.status = { ok: false, unavailable: true };
+      paintTwofa();
+      return;
+    }
+
+    twofa.loading = true;
+    const result = await store.twofaStatus();
+    twofa.loading = false;
+    twofa.loaded = true;
+    twofa.status = result;
+    paintTwofa();
+  }
+
+  function paintTwofa() {
+    const box = document.getElementById('account-2fa');
+    if (!box) return;
+
+    const status = twofa.status || { ok: false, unavailable: true };
+    twofaError('');
+
+    if (status.unavailable) {
+      box.innerHTML =
+        '<p class="hint">La verificación en dos pasos todavía no está activa en el servidor. ' +
+        'Cuando el administrador despliegue el servicio de seguridad podrás activarla aquí.</p>';
+      return;
+    }
+
+    if (!status.ok) {
+      box.innerHTML = '<p class="hint">No se pudo consultar el estado de seguridad. ' +
+        'Recarga la página e inténtalo de nuevo.</p>';
+      return;
+    }
+
+    if (twofa.view === 'pending') {
+      box.innerHTML =
+        '<p class="login-step-hint">Enviamos un código de 6 dígitos a <b>' +
+          ui.esc(twofa.pendingMasked || 'tu correo') + '</b>. Vence en 10 minutos.</p>' +
+        '<form id="account-2fa-verify" class="form-grid">' +
+          '<div class="form-field full">' +
+            '<label for="twofa-code">Código de 6 dígitos</label>' +
+            '<input id="twofa-code" class="code-input" type="text" inputmode="numeric" ' +
+              'maxlength="6" autocomplete="one-time-code" placeholder="000000" required>' +
+          '</div>' +
+          '<div class="full">' +
+            '<button type="submit" class="btn btn-primary" style="width:100%">Activar verificación</button>' +
+          '</div>' +
+        '</form>' +
+        '<details class="twofa-details">' +
+          '<summary>¿No te llegó? Reenviar código</summary>' +
+          '<form id="account-2fa-resend" class="form-grid">' +
+            '<div class="form-field full">' +
+              '<label for="twofa-resend-pass">Contraseña actual</label>' +
+              '<input id="twofa-resend-pass" type="password" autocomplete="current-password" required>' +
+            '</div>' +
+            '<div class="full">' +
+              '<button type="submit" class="btn btn-ghost" style="width:100%">Reenviar código</button>' +
+            '</div>' +
+          '</form>' +
+        '</details>' +
+        '<div class="login-step-actions">' +
+          '<button type="button" class="link-button" data-2fa="cancel">Cancelar</button>' +
+        '</div>' +
+        '<div id="twofa-error"></div>';
+      const input = document.getElementById('twofa-code');
+      if (input) input.focus();
+      return;
+    }
+
+    if (twofa.view === 'codes') {
+      const list = twofa.recoveryCodes.map(c => ui.esc(c)).join('\n');
+      box.innerHTML =
+        '<div class="twofa-codes">' +
+          '<p><b>Guarda estos 10 códigos.</b> Cada uno sirve una sola vez para recuperar ' +
+          'el acceso si pierdes el correo. No volverán a mostrarse.</p>' +
+          '<pre id="twofa-code-list">' + list + '</pre>' +
+          '<div class="login-step-actions">' +
+            '<button type="button" class="btn btn-ghost btn-sm" data-2fa="download">Descargar</button>' +
+            '<button type="button" class="btn btn-primary btn-sm" data-2fa="done">Ya los guardé</button>' +
+          '</div>' +
+        '</div>' +
+        '<div id="twofa-error"></div>';
+      return;
+    }
+
+    if (status.enabled) {
+      box.innerHTML =
+        '<p class="hint" style="margin-bottom:12px">La verificación en dos pasos está ' +
+          '<b>activada</b>. Cada vez que entres te pediremos un código enviado a tu correo.</p>' +
+        '<div class="detail-row"><span>Estado</span><span>● Activada</span></div>' +
+        '<div class="detail-row"><span>Correo</span><span>' + ui.esc(status.emailMasked || '—') + '</span></div>' +
+        '<div class="detail-row"><span>Códigos de recuperación</span><span>' +
+          Number(status.recoveryCount || 0) + ' disponibles</span></div>' +
+
+        '<details class="twofa-details">' +
+          '<summary>Cambiar el correo de los códigos</summary>' +
+          '<form id="account-2fa-email" class="form-grid">' +
+            '<div class="form-field full">' +
+              '<label for="twofa-new-email">Correo nuevo</label>' +
+              '<input id="twofa-new-email" type="email" placeholder="tucorreo@gmail.com" autocomplete="email" required>' +
+            '</div>' +
+            '<div class="form-field full">' +
+              '<label for="twofa-email-pass">Contraseña actual</label>' +
+              '<input id="twofa-email-pass" type="password" autocomplete="current-password" required>' +
+            '</div>' +
+            '<div class="full">' +
+              '<button type="submit" class="btn btn-primary" style="width:100%">Enviar código al correo nuevo</button>' +
+            '</div>' +
+          '</form>' +
+        '</details>' +
+
+        '<details class="twofa-details">' +
+          '<summary>Generar códigos de recuperación nuevos</summary>' +
+          '<form id="account-2fa-regen" class="form-grid">' +
+            '<div class="form-field full">' +
+              '<label for="twofa-regen-pass">Contraseña actual</label>' +
+              '<input id="twofa-regen-pass" type="password" autocomplete="current-password" required>' +
+            '</div>' +
+            '<div class="full">' +
+              '<button type="submit" class="btn btn-primary" style="width:100%">Generar códigos nuevos</button>' +
+            '</div>' +
+          '</form>' +
+        '</details>' +
+
+        '<details class="twofa-details">' +
+          '<summary>Desactivar la verificación en dos pasos</summary>' +
+          '<form id="account-2fa-disable" class="form-grid">' +
+            '<div class="form-field full">' +
+              '<label for="twofa-disable-pass">Contraseña actual</label>' +
+              '<input id="twofa-disable-pass" type="password" autocomplete="current-password" required>' +
+            '</div>' +
+            '<div class="full">' +
+              '<button type="submit" class="btn btn-danger" style="width:100%">Desactivar verificación</button>' +
+            '</div>' +
+          '</form>' +
+        '</details>' +
+
+        '<div id="twofa-error"></div>';
+      return;
+    }
+
+    box.innerHTML =
+      '<p class="hint" style="margin-bottom:14px">Cuando la actives, además de tu contraseña ' +
+        'te pediremos un código de 6 dígitos enviado a tu correo personal. Así, si alguien ' +
+        'conoce tu contraseña, no podrá entrar.</p>' +
+      '<form id="account-2fa-form" class="form-grid">' +
+        '<div class="form-field full">' +
+          '<label for="twofa-email">Correo personal</label>' +
+          '<input id="twofa-email" type="email" placeholder="tucorreo@gmail.com" autocomplete="email" required>' +
+          '<span class="hint">Aquí llegarán los códigos. No uses el correo interno @aguamagaly.app.</span>' +
+        '</div>' +
+        '<div class="form-field full">' +
+          '<label for="twofa-pass">Contraseña actual</label>' +
+          '<input id="twofa-pass" type="password" autocomplete="current-password" required>' +
+        '</div>' +
+        '<div class="full">' +
+          '<button type="submit" class="btn btn-primary" style="width:100%">Enviar código de activación</button>' +
+        '</div>' +
+      '</form>' +
+      '<div id="twofa-error"></div>';
+  }
+
+  async function onTwofaSubmit(e) {
+    const form = e.target;
+    if (!form || !form.id) return;
+    e.preventDefault();
+    twofaError('');
+
+    if (form.id === 'account-2fa-form' || form.id === 'account-2fa-email') {
+      const email = document.getElementById(form.id === 'account-2fa-email' ? 'twofa-new-email' : 'twofa-email').value.trim();
+      const pass = document.getElementById(form.id === 'account-2fa-email' ? 'twofa-email-pass' : 'twofa-pass').value;
+      const btn = form.querySelector('button[type="submit"]');
+      twofaBusy(btn, true, 'Enviando…');
+      const result = await store.twofaSetupStart(email, pass);
+      twofaBusy(btn, false);
+      if (!result.ok) {
+        twofaError(result.error || 'No se pudo enviar el código.');
+        return;
+      }
+      twofa.view = 'pending';
+      twofa.pendingEmail = email;
+      twofa.pendingMasked = result.emailMasked || email;
+      paintTwofa();
+      return;
+    }
+
+    if (form.id === 'account-2fa-verify') {
+      const code = (document.getElementById('twofa-code').value || '').replace(/\D/g, '');
+      if (code.length !== 6) {
+        twofaError('Escribe los 6 dígitos del código.');
+        return;
+      }
+      const btn = form.querySelector('button[type="submit"]');
+      twofaBusy(btn, true, 'Verificando…');
+      const result = await store.twofaSetupVerify(code);
+      twofaBusy(btn, false);
+      if (!result.ok) {
+        twofaError(result.error || 'Código incorrecto.');
+        return;
+      }
+      twofa.recoveryCodes = Array.isArray(result.recoveryCodes) ? result.recoveryCodes : [];
+      twofa.view = 'codes';
+      twofa.status = { ok: true, enabled: true, emailMasked: result.emailMasked || twofa.pendingMasked, recoveryCount: twofa.recoveryCodes.length };
+      paintTwofa();
+      return;
+    }
+
+    if (form.id === 'account-2fa-resend') {
+      const pass = document.getElementById('twofa-resend-pass').value;
+      const btn = form.querySelector('button[type="submit"]');
+      twofaBusy(btn, true, 'Enviando…');
+      const result = await store.twofaSetupStart(twofa.pendingEmail, pass);
+      twofaBusy(btn, false);
+      if (!result.ok) {
+        twofaError(result.error || 'No se pudo reenviar el código.');
+        return;
+      }
+      twofa.pendingMasked = result.emailMasked || twofa.pendingMasked;
+      paintTwofa();
+      ui.toast('Código reenviado. Revisa tu correo.', 'success');
+      return;
+    }
+
+    if (form.id === 'account-2fa-regen') {
+      const pass = document.getElementById('twofa-regen-pass').value;
+      const btn = form.querySelector('button[type="submit"]');
+      twofaBusy(btn, true, 'Generando…');
+      const result = await store.twofaRegenerate(pass);
+      twofaBusy(btn, false);
+      if (!result.ok) {
+        twofaError(result.error || 'No se pudieron generar los códigos.');
+        return;
+      }
+      twofa.recoveryCodes = Array.isArray(result.recoveryCodes) ? result.recoveryCodes : [];
+      twofa.view = 'codes';
+      paintTwofa();
+      return;
+    }
+
+    if (form.id === 'account-2fa-disable') {
+      const pass = document.getElementById('twofa-disable-pass').value;
+      const ok = await ui.confirm({
+        title: 'Desactivar verificación en dos pasos',
+        message: 'Tu cuenta quedará protegida solo con la contraseña. ¿Continuar?',
+        confirmText: 'Desactivar',
+        danger: true
+      });
+      if (!ok) return;
+      const btn = form.querySelector('button[type="submit"]');
+      twofaBusy(btn, true, 'Desactivando…');
+      const result = await store.twofaDisable(pass);
+      twofaBusy(btn, false);
+      if (!result.ok) {
+        twofaError(result.error || 'No se pudo desactivar.');
+        return;
+      }
+      twofa.loaded = false;
+      twofa.view = 'status';
+      twofa.recoveryCodes = [];
+      await ensureTwofa();
+      ui.toast('Verificación en dos pasos desactivada', 'success');
+    }
+  }
+
+  function downloadRecoveryCodes() {
+    const text = 'AGUA MAGALY — CÓDIGOS DE RECUPERACIÓN\n' +
+      'Usuario: ' + (state.admin ? state.admin.username : '') + '\n' +
+      'Guarda este archivo en un lugar seguro. Cada código sirve una sola vez.\n\n' +
+      twofa.recoveryCodes.join('\n') + '\n';
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'agua-magaly-codigos-recuperacion.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  async function onTwofaClick(e) {
+    const btn = e.target.closest ? e.target.closest('[data-2fa]') : null;
+    if (!btn) return;
+    const action = btn.dataset['2fa'];
+
+    if (action === 'cancel') {
+      twofa.view = 'status';
+      twofa.recoveryCodes = [];
+      paintTwofa();
+      return;
+    }
+
+    if (action === 'download') {
+      downloadRecoveryCodes();
+      return;
+    }
+
+    if (action === 'done') {
+      twofa.view = 'status';
+      twofa.recoveryCodes = [];
+      twofa.loaded = false;
+      await ensureTwofa();
+      ui.toast('Verificación en dos pasos activada', 'success');
+    }
   }
 
   function renderAccount() {
@@ -1370,6 +1779,7 @@
       '<div class="detail-row"><span>Usuario</span><span>' + ui.esc(state.admin.username) + '</span></div>' +
       '<div class="detail-row"><span>Rol</span><span>Administrador</span></div>' +
       '<div class="detail-row"><span>Estado</span><span>Activo</span></div>';
+    ensureTwofa();
   }
 
   // ==========================================================================

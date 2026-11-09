@@ -77,6 +77,7 @@ Deno.serve(async (req) => {
   const username = clean(body.username, 40).toLowerCase();
   const name = clean(body.name, 120) || username;
   const phone = clean(body.phone, 40);
+  const personalEmail = clean(body.email, 254).toLowerCase();
   const password = String(body.password || '');
   const role = body.role === 'admin' ? 'admin' : 'driver';
   const color = /^#[0-9a-f]{3,8}$/i.test(String(body.color || '')) ? String(body.color) : '#1C7FA8';
@@ -88,7 +89,8 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: 'La contraseña debe tener 8+ caracteres con letras y números.' }, 400);
   }
 
-  const email = `${username}@aguamagaly.app`;
+  // El correo de acceso es interno; el correo personal se guarda en `staff`.
+  const authEmail = `${username}@aguamagaly.app`;
 
   // 3. Crear la cuenta con service_role (solo en el servidor).
   const admin = createClient(supabaseUrl, serviceKey, {
@@ -96,7 +98,7 @@ Deno.serve(async (req) => {
   });
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
+    email: authEmail,
     password,
     email_confirm: true,
     user_metadata: { username }
@@ -116,6 +118,7 @@ Deno.serve(async (req) => {
     username,
     name,
     phone,
+    email: personalEmail,
     role,
     color,
     active: body.active !== false
