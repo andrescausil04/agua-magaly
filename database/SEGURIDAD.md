@@ -227,6 +227,7 @@ Cuando esté desplegada:
 | La consola muestra un error de CSP | Se añadió un script o fuente externa | Añade el dominio a la CSP de los HTML o aloja el recurso en el sitio |
 | Al ejecutar el SQL sale “Unterminated dollar-quoted string at Line: 101, Column: 1” | La herramienta solo lee las primeras 100 líneas del texto pegado y corta el bloque `do $$ … $$` a la mitad | Usa `database/security-hardening.sql` (33 líneas). Si aún falla, ejecuta en orden las partes 1, 2 y 3 |
 | Al ejecutar el SQL sale “Unterminated dollar-quoted” sin número de línea | Se copió una versión antigua (con comillas dollar anidadas) | Vuelve a copiar `database/security-hardening.sql` actualizado y ejecútalo completo |
+| Al ejecutar `storage-productos.sql` sale “Only singular query allowed” | La herramienta solo acepta una sentencia por ejecución | Usa la versión actual del archivo: es **una sola sentencia** `do $$ … $$` de 27 líneas |
 
 ---
 
