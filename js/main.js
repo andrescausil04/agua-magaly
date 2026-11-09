@@ -28,10 +28,11 @@
       .replace(/'/g, '&#39;');
   }
 
-  // Solo permite rutas locales o URLs http(s) para las imágenes del catálogo.
+  // Solo permite rutas locales, URLs http(s) o imágenes incrustadas (data:).
   function safeImageUrl(value) {
     const url = String(value || '').trim();
     if (!url) return 'assets/bolsa-250ml.jpg';
+    if (/^data:image\/(png|jpe?g|webp|gif|avif);base64,[a-z0-9+/=\s]+$/i.test(url)) return url;
     if (/^https?:\/\//i.test(url) || /^(\.{0,2}\/)?assets\//i.test(url) || /^[a-z0-9._-]+\.(png|jpe?g|webp|gif|avif)$/i.test(url)) {
       return url;
     }

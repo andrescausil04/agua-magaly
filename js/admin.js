@@ -179,6 +179,7 @@
   function safeImage(value) {
     const url = String(value || '').trim();
     if (!url) return 'assets/bolsa-250ml.jpg';
+    if (/^data:image\/(png|jpe?g|webp|gif|avif);base64,[a-z0-9+/=\s]+$/i.test(url)) return url;
     if (/^https?:\/\//i.test(url) || /^(\.{0,2}\/)?assets\//i.test(url) || /^[a-z0-9._-]+\.(png|jpe?g|webp|gif|avif)$/i.test(url)) {
       return url;
     }
@@ -708,12 +709,31 @@
   // ------------------------------ Pedido ------------------------------
   function openOrderForm() {
     const drivers = state.users.filter(u => u.role === 'driver' && u.active);
+    const products = state.products.filter(p => p.active !== false);
+    const lines = products.map(p =>
+      '<label class="order-line">' +
+        '<span class="order-line-info"><b>' + ui.esc(p.name) + '</b><small>' +
+          U.formatMoney(p.price) + ' ' + ui.esc(p.unit || '') +
+        '</small></span>' +
+        '<input type="number" class="order-line-qty" min="0" step="1" inputmode="numeric" value="0"' +
+          ' data-price="' + Number(p.price) + '" data-name="' + ui.esc(p.name) + '"' +
+          ' aria-label="Cantidad de ' + ui.esc(p.name) + '">' +
+      '</label>'
+    ).join('');
+
     const body = '<div class="form-grid">' +
       field('f-client', 'Cliente *', { required: true, placeholder: 'Ej. Tienda Doña Carmen', full: true }) +
       field('f-phone', 'Teléfono / WhatsApp *', { required: true, placeholder: 'Ej. 312 456 7890' }) +
-      field('f-total', 'Total (COP) *', { required: true, type: 'number', min: 0, step: 500, placeholder: '16000' }) +
-      field('f-address', 'Dirección de entrega', { placeholder: 'Ej. Calle 4 # 12-30, Bajo Grande', full: true }) +
+      '<div class="form-field full">' +
+        '<label>Productos del pedido</label>' +
+        (products.length
+          ? '<div class="order-lines">' + lines + '</div>' +
+            '<span class="hint" id="f-lines-total">Escribe las cantidades y el total se calcula solo.</span>'
+          : '<span class="hint">Todavía no hay productos activos. Créalos en «Productos» o escribe el total a mano.</span>') +
+      '</div>' +
       field('f-items', 'Detalle del pedido *', { required: true, placeholder: 'Ej. 3 Pacas 250ml + 2 Pacas 3L', full: true }) +
+      field('f-total', 'Total (COP) *', { required: true, type: 'number', min: 0, step: 500, placeholder: '16000', hint: 'Se calcula solo con las cantidades; puedes ajustarlo.' }) +
+      field('f-address', 'Dirección de entrega', { placeholder: 'Ej. Calle 4 # 12-30, Bajo Grande', full: true }) +
       field('f-driver', 'Repartidor', {
         type: 'select',
         options: [{ value: '', label: 'Sin asignar' }].concat(drivers.map(d => ({ value: d.id, label: d.name })))
@@ -730,7 +750,7 @@
       field('f-notes', 'Notas para el repartidor', { type: 'textarea', rows: 2, full: true, placeholder: 'Ej. Llamar al llegar, portón negro' }) +
     '</div>';
 
-    openModal({
+    const modal = openModal({
       title: 'Nuevo pedido',
       subtitle: 'Registra un pedido tomado por teléfono o WhatsApp.',
       submitLabel: 'Crear pedido',
@@ -764,6 +784,35 @@
         ui.toast('Pedido creado para ' + order.client, 'success');
       }
     });
+
+    // Total automático: cantidad × precio del catálogo.
+    const form = modal.form;
+    const qtyInputs = form.querySelectorAll('.order-line-qty');
+    const totalInput = form.querySelector('#f-total');
+    const itemsInput = form.querySelector('#f-items');
+    const linesTotal = form.querySelector('#f-lines-total');
+
+    const recalc = () => {
+      let total = 0;
+      const parts = [];
+      qtyInputs.forEach(input => {
+        const qty = Math.max(0, Math.floor(Number(input.value) || 0));
+        const price = Number(input.dataset.price) || 0;
+        if (qty > 0) {
+          total += qty * price;
+          parts.push(qty + ' × ' + input.dataset.name);
+        }
+      });
+      if (!parts.length) {
+        if (linesTotal) linesTotal.textContent = 'Escribe las cantidades y el total se calcula solo.';
+        return;
+      }
+      totalInput.value = String(total);
+      itemsInput.value = parts.join(', ');
+      if (linesTotal) linesTotal.textContent = 'Total calculado: ' + U.formatMoney(total);
+    };
+
+    qtyInputs.forEach(input => input.addEventListener('input', recalc));
   }
 
   // ------------------------------ Producto ------------------------------
@@ -773,6 +822,7 @@
 
   function openProductForm(product) {
     const p = product || {};
+    const submitLabel = product ? 'Guardar cambios' : 'Crear producto';
     const body = '<div class="form-grid">' +
       field('f-name', 'Nombre del producto *', { required: true, full: true, value: p.name || '', placeholder: 'Ej. Paca de agua 250 ml' }) +
       field('f-price', 'Precio (COP) *', { required: true, type: 'number', min: 0, step: 500, value: p.price || '' }) +
@@ -786,14 +836,52 @@
         ]
       }) +
       field('f-desc', 'Descripción', { type: 'textarea', rows: 3, full: true, value: p.desc || '' }) +
-      field('f-image', 'Imagen (ruta)', { full: true, value: p.image || 'assets/bolsa-250ml.jpg', hint: 'Ej. assets/bolsa-250ml.jpg' }) +
+      '<div class="form-field full">' +
+        '<label for="f-image-choose">Imagen del producto</label>' +
+        '<div class="image-picker">' +
+          '<img id="f-image-preview" class="image-preview" src="' + ui.esc(safeImage(p.image)) + '" alt="Vista previa de la imagen">' +
+          '<div class="image-picker-body">' +
+            '<input id="f-image-file" type="file" accept="image/*" hidden>' +
+            '<div class="image-picker-actions">' +
+              '<button type="button" class="btn btn-ghost btn-sm" id="f-image-choose">📷 Subir imagen</button>' +
+              '<span class="hint" id="f-image-hint">JPG, PNG o WEBP · máximo 5 MB</span>' +
+            '</div>' +
+            '<input id="f-image" type="text" value="' + ui.esc(p.image || '') + '" placeholder="o pega un enlace: https://...">' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
     '</div>';
 
-    openModal({
+    const modal = openModal({
       title: product ? 'Editar producto' : 'Nuevo producto',
-      submitLabel: product ? 'Guardar cambios' : 'Crear producto',
+      submitLabel: submitLabel,
       body: body,
       onSubmit: async form => {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const fileInput = form.querySelector('#f-image-file');
+        const urlInput = form.querySelector('#f-image');
+        const restore = () => {
+          if (!submitBtn) return;
+          submitBtn.disabled = false;
+          submitBtn.textContent = submitLabel;
+        };
+
+        let image = urlInput.value.trim();
+        const file = fileInput.files && fileInput.files[0];
+        try {
+          if (file) {
+            if (submitBtn) {
+              submitBtn.disabled = true;
+              submitBtn.textContent = 'Subiendo imagen…';
+            }
+            image = await store.uploadImage(file);
+          }
+        } catch (err) {
+          restore();
+          ui.toast(err.message || 'No se pudo subir la imagen', 'error');
+          return false;
+        }
+
         const record = {
           id: product ? product.id : 'prod_' + Date.now(),
           name: form.querySelector('#f-name').value.trim(),
@@ -802,11 +890,54 @@
           badge: form.querySelector('#f-badge').value.trim() || 'General',
           active: form.querySelector('#f-status').value === 'true',
           desc: form.querySelector('#f-desc').value.trim(),
-          image: form.querySelector('#f-image').value.trim() || 'assets/bolsa-250ml.jpg'
+          image: image || 'assets/bolsa-250ml.jpg'
         };
-        await store.upsert('products', record);
+
+        try {
+          await store.upsert('products', record);
+        } catch (err) {
+          restore();
+          ui.toast('No se pudo guardar el producto. Revisa la conexión.', 'error');
+          return false;
+        }
+
         await reload();
         ui.toast(product ? 'Producto actualizado' : 'Producto creado', 'success');
+        return true;
+      }
+    });
+
+    const form = modal.form;
+    const preview = form.querySelector('#f-image-preview');
+    const fileInput = form.querySelector('#f-image-file');
+    const urlInput = form.querySelector('#f-image');
+    const hint = form.querySelector('#f-image-hint');
+
+    form.querySelector('#f-image-choose').addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      if (!/^image\//i.test(file.type)) {
+        ui.toast('Selecciona un archivo de imagen', 'error');
+        fileInput.value = '';
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        ui.toast('La imagen no puede pesar más de 5 MB', 'error');
+        fileInput.value = '';
+        return;
+      }
+      if (preview) preview.src = URL.createObjectURL(file);
+      if (hint) hint.textContent = 'Lista para subir: ' + file.name;
+    });
+
+    urlInput.addEventListener('input', () => {
+      const value = urlInput.value.trim();
+      if (value) {
+        fileInput.value = '';
+        if (preview) preview.src = safeImage(value);
+        if (hint) hint.textContent = 'JPG, PNG o WEBP · máximo 5 MB';
       }
     });
   }

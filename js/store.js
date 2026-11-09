@@ -887,6 +887,56 @@ window.MagalyStore = (function () {
     return { ok: true, id: user.id };
   }
 
+  /**
+   * Sube la imagen de un producto al almacenamiento de Supabase y devuelve su
+   * enlace público. Sin nube la guarda como data URL (solo para pruebas).
+   */
+  async function uploadImage(file) {
+    await ready();
+    if (!file || !file.size) throw new Error('No se seleccionó ninguna imagen.');
+
+    const type = String(file.type || '').toLowerCase();
+    if (!/^image\/(jpeg|png|webp|gif|avif)$/.test(type)) {
+      throw new Error('Formato no válido. Usa JPG, PNG, WEBP, GIF o AVIF.');
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('La imagen no puede pesar más de 5 MB.');
+    }
+
+    if (!cloudActive) {
+      if (file.size > 300 * 1024) {
+        throw new Error('Sin conexión a la nube, usa una imagen de menos de 300 KB.');
+      }
+      return await readAsDataUrl(file);
+    }
+
+    const ext = type === 'image/jpeg' ? 'jpg' : type.split('/')[1];
+    const path = 'productos/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+    const { error } = await sb.storage.from('products').upload(path, file, {
+      cacheControl: '31536000',
+      upsert: false,
+      contentType: type
+    });
+    if (error) {
+      const msg = String(error.message || '');
+      if (/bucket/i.test(msg)) {
+        throw new Error('Falta activar el almacén de imágenes. Ejecuta database/storage-productos.sql en Supabase.');
+      }
+      throw new Error('No se pudo subir la imagen. Inténtalo de nuevo.');
+    }
+    const { data } = sb.storage.from('products').getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  function readAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
   // Exporta una colección a CSV y la descarga
   function exportCsv(entity, rows) {
     const data = rows && rows.length ? rows : [];
@@ -935,6 +985,7 @@ window.MagalyStore = (function () {
     subscribe,
     hashPassword,
     passwordIssue,
+    uploadImage,
     exportCsv,
     uid,
     isCloud: () => cloudActive,
