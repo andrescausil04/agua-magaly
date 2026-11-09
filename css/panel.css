@@ -2030,3 +2030,110 @@ body.has-twofa-gate {
   position: sticky; top: 0; z-index: 30; margin: 0; padding: 10px 16px; text-align: center;
   background: #FFF6E5; color: #7A4B00; border-bottom: 1px solid #F2D08B; font-size: 13.5px; font-weight: 600;
 }
+
+/* ==========================================================================
+   ORGANIZACIÓN DEL PANEL (2026-11)
+   Menú agrupado por áreas, barra superior fija y accesos rápidos
+   ========================================================================== */
+.nav-group {
+  display: block;
+  margin: 14px 12px 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: rgba(234, 244, 248, 0.5);
+}
+.panel-nav > .nav-group:first-child { margin-top: 2px; }
+.panel-nav-btn.nav-more { display: none; }
+
+/* Las secciones heredaban el relleno grande de la tienda (90px): se quita */
+.panel-main > .panel-section { padding: 0 0 8px; }
+
+.panel-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: -26px -32px 22px;
+  padding: 12px 32px;
+  background: rgba(238, 243, 246, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+}
+.topbar-info { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.topbar-info strong { font-size: 15px; color: var(--blue-deep); }
+.topbar-info span { font-size: 12.5px; color: var(--ink-soft); }
+.topbar-btn { color: var(--blue-deep); border-color: var(--rule); }
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.quick-btn {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 11px;
+  align-items: center;
+  padding: 13px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: #fff;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.quick-btn span { grid-row: 1 / 3; font-size: 22px; }
+.quick-btn b { font-size: 14px; color: var(--ink); }
+.quick-btn small { font-size: 12px; color: var(--ink-soft); }
+.quick-btn:hover { border-color: var(--blue); box-shadow: 0 6px 16px rgba(11, 79, 115, 0.12); transform: translateY(-1px); }
+.quick-btn:focus-visible { outline: 3px solid var(--blue-pale); outline-offset: 2px; }
+
+@media (max-width: 1100px) {
+  .nav-group { display: none; }
+  .panel-topbar { margin: -20px -20px 18px; padding: 10px 20px; top: 58px; }
+  .quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .panel-topbar { position: static; margin: -16px -14px 14px; padding: 10px 14px; }
+  .panel-topbar .panel-actions { width: auto; }
+  .topbar-info { display: none; }
+  .quick-btn small { display: none; }
+  .quick-btn { padding: 11px 12px; }
+
+  /* Barra inferior: 4 secciones principales + "Más" */
+  .panel-nav { flex-wrap: wrap; }
+  .panel-nav-btn.nav-more { display: flex; }
+  .panel-nav-btn.nav-secondary { display: none; }
+  /* Con "Más" abierto: 3 secundarias por fila arriba y las 5 principales abajo */
+  body.nav-more-open .panel-nav {
+    display: grid;
+    grid-template-columns: repeat(30, minmax(0, 1fr));
+    gap: 4px;
+  }
+  body.nav-more-open .panel-nav-btn { grid-column: span 6; }
+  body.nav-more-open .panel-nav-btn[data-section="resumen"] { grid-column: 1 / span 6; }
+  body.nav-more-open .panel-nav-btn.nav-secondary {
+    display: flex;
+    order: -1;
+    grid-column: span 10;
+    min-height: 56px;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  body.nav-more-open .panel-nav-btn.nav-secondary.active { background: #fff; }
+  body.nav-more-open .panel-nav-btn.nav-secondary .nav-label-long {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  body.nav-more-open .panel-nav { box-shadow: 0 -16px 40px rgba(3, 24, 35, 0.45); }
+}

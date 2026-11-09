@@ -5,7 +5,7 @@
  * y solo usa la copia si no hay conexión.
  * Nunca guarda llamadas a Supabase: los datos de pedidos no pasan por aquí.
  */
-const VERSION = '2026110902';
+const VERSION = '2026110903';
 const CACHE = 'magaly-app-' + VERSION;
 const V = '?v=' + VERSION;
 

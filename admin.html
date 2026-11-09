@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/logo-magaly.png">
-  <link rel="stylesheet" href="css/styles.css?v=2026110902">
-  <link rel="stylesheet" href="css/panel.css?v=2026110902">
+  <link rel="stylesheet" href="css/styles.css?v=2026110903">
+  <link rel="stylesheet" href="css/panel.css?v=2026110903">
 </head>
 <body class="panel-shell" id="admin-page">
 
@@ -29,6 +29,7 @@
     </a>
 
     <nav class="panel-nav" aria-label="Secciones del panel">
+      <span class="nav-group">Día a día</span>
       <button type="button" class="panel-nav-btn active" data-section="resumen" title="Resumen" aria-label="Resumen">
         <span class="nav-ico" aria-hidden="true">📊</span><span class="nav-label-long">Resumen</span>
       </button>
@@ -36,31 +37,37 @@
         <span class="nav-ico" aria-hidden="true">🧾</span><span class="nav-label-long">Pedidos</span>
         <span class="nav-count" id="count-orders">0</span>
       </button>
-      <button type="button" class="panel-nav-btn" data-section="reportes" title="Reportes" aria-label="Reportes">
-        <span class="nav-ico" aria-hidden="true">📈</span><span class="nav-label-long">Reportes</span>
+      <button type="button" class="panel-nav-btn" data-section="pqrs" title="Quejas (PQRS)" aria-label="Quejas (PQRS)">
+        <span class="nav-ico" aria-hidden="true">💬</span><span class="nav-label-long">Quejas (PQRS)</span>
+        <span class="nav-count" id="count-pqrs">0</span>
       </button>
+      <span class="nav-group">Producción y ventas</span>
       <button type="button" class="panel-nav-btn" data-section="inventario" title="Inventario" aria-label="Inventario">
         <span class="nav-ico" aria-hidden="true">🏷️</span><span class="nav-label-long">Inventario</span>
         <span class="nav-count" id="count-inventory">0</span>
       </button>
-      <button type="button" class="panel-nav-btn" data-section="repartidores" title="Repartidores" aria-label="Repartidores">
-        <span class="nav-ico" aria-hidden="true">🛵</span><span class="nav-label-long">Repartidores</span>
-        <span class="nav-count" id="count-drivers">0</span>
+      <button type="button" class="panel-nav-btn nav-secondary" data-section="reportes" title="Reportes" aria-label="Reportes">
+        <span class="nav-ico" aria-hidden="true">📈</span><span class="nav-label-long">Reportes</span>
       </button>
-      <button type="button" class="panel-nav-btn" data-section="productos" title="Productos" aria-label="Productos">
+      <button type="button" class="panel-nav-btn nav-secondary" data-section="productos" title="Productos" aria-label="Productos">
         <span class="nav-ico" aria-hidden="true">📦</span><span class="nav-label-long">Productos</span>
         <span class="nav-count" id="count-products">0</span>
       </button>
-      <button type="button" class="panel-nav-btn" data-section="rutas" title="Rutas" aria-label="Rutas">
+      <span class="nav-group">Reparto</span>
+      <button type="button" class="panel-nav-btn nav-secondary" data-section="repartidores" title="Repartidores" aria-label="Repartidores">
+        <span class="nav-ico" aria-hidden="true">🛵</span><span class="nav-label-long">Repartidores</span>
+        <span class="nav-count" id="count-drivers">0</span>
+      </button>
+      <button type="button" class="panel-nav-btn nav-secondary" data-section="rutas" title="Rutas" aria-label="Rutas">
         <span class="nav-ico" aria-hidden="true">🗺️</span><span class="nav-label-long">Rutas</span>
         <span class="nav-count" id="count-routes">0</span>
       </button>
-      <button type="button" class="panel-nav-btn" data-section="pqrs" title="PQRS" aria-label="PQRS">
-        <span class="nav-ico" aria-hidden="true">💬</span><span class="nav-label-long">PQRS</span>
-        <span class="nav-count" id="count-pqrs">0</span>
-      </button>
-      <button type="button" class="panel-nav-btn" data-section="cuenta" title="Mi cuenta" aria-label="Mi cuenta">
+      <span class="nav-group">Cuenta</span>
+      <button type="button" class="panel-nav-btn nav-secondary" data-section="cuenta" title="Mi cuenta" aria-label="Mi cuenta">
         <span class="nav-ico" aria-hidden="true">👤</span><span class="nav-label-long">Mi cuenta</span>
+      </button>
+      <button type="button" class="panel-nav-btn nav-more" id="nav-more" aria-expanded="false" aria-label="Más secciones">
+        <span class="nav-ico" aria-hidden="true">☰</span><span class="nav-label-long">Más</span>
       </button>
     </nav>
 
@@ -79,6 +86,19 @@
        ====================================================================== -->
   <main class="panel-main">
 
+    <!-- BARRA SUPERIOR (visible en todas las secciones) -->
+    <div class="panel-topbar">
+      <div class="topbar-info">
+        <strong id="topbar-section">Resumen</strong>
+        <span id="topbar-date"></span>
+      </div>
+      <div class="panel-actions">
+        <button type="button" class="btn btn-ghost btn-sm topbar-btn" id="btn-notif" title="Sonido y aviso cuando llegue un pedido nuevo">🔔 Avisos</button>
+        <button type="button" class="btn btn-ghost btn-sm topbar-btn" id="btn-refresh" title="Volver a cargar los datos">↻ Actualizar</button>
+        <a href="index.html" class="btn btn-primary btn-sm" target="_blank" rel="noopener">Ver tienda</a>
+      </div>
+    </div>
+
     <!-- AVISO DE SEGURIDAD (se muestra si falta desplegar el servicio 2FA) -->
     <div class="security-banner" id="security-banner" style="display:none">
       <span>⚠️ La verificación en dos pasos aún no está disponible en el servidor. Actívala cuando se despliegue el servicio de seguridad.</span>
@@ -92,15 +112,17 @@
           <h1>Resumen del día</h1>
           <p id="resumen-subtitle">Cargando información…</p>
         </div>
-        <div class="panel-actions">
-          <button type="button" class="btn btn-ghost btn-sm" id="btn-notif" style="color:var(--blue-deep);border-color:var(--rule)" title="Sonido y aviso cuando llegue un pedido nuevo">🔔 Avisos</button>
-          <button type="button" class="btn btn-ghost btn-sm" id="btn-refresh" style="color:var(--blue-deep);border-color:var(--rule)">↻ Actualizar</button>
-          <a href="index.html" class="btn btn-primary btn-sm" target="_blank" rel="noopener">Ver tienda</a>
-        </div>
       </div>
 
       <div id="stock-alert" class="stock-alert" hidden></div>
       <div class="kpi-grid" id="kpi-grid"></div>
+
+      <div class="quick-actions" aria-label="Accesos rápidos">
+        <button type="button" class="quick-btn" data-quick="new-order"><span aria-hidden="true">🧾</span><b>Nuevo pedido</b><small>Registrar uno por teléfono</small></button>
+        <button type="button" class="quick-btn" data-goto="pedidos"><span aria-hidden="true">🚚</span><b>Pedidos abiertos</b><small>Asignar y despachar</small></button>
+        <button type="button" class="quick-btn" data-goto="inventario"><span aria-hidden="true">🏷️</span><b>Producción del día</b><small>Sumar pacas al stock</small></button>
+        <button type="button" class="quick-btn" data-goto="pqrs"><span aria-hidden="true">💬</span><b>Quejas y sugerencias</b><small>Responder clientes</small></button>
+      </div>
 
       <div class="dash-grid">
         <div class="panel-card">
@@ -432,10 +454,10 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=2026110902"></script>
-  <script src="js/store.js?v=2026110902"></script>
-  <script src="js/ui.js?v=2026110902"></script>
-  <script src="js/auth.js?v=2026110902"></script>
-  <script src="js/admin.js?v=2026110902"></script>
+  <script src="js/config.js?v=2026110903"></script>
+  <script src="js/store.js?v=2026110903"></script>
+  <script src="js/ui.js?v=2026110903"></script>
+  <script src="js/auth.js?v=2026110903"></script>
+  <script src="js/admin.js?v=2026110903"></script>
 </body>
 </html>

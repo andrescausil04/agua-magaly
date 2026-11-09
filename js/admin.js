@@ -104,23 +104,57 @@
   // NAVEGACIÓN
   // ==========================================================================
   function bindNavigation() {
-    document.querySelectorAll('.panel-nav-btn').forEach(btn => {
+    document.querySelectorAll('.panel-nav-btn[data-section]').forEach(btn => {
       btn.addEventListener('click', () => goto(btn.dataset.section));
     });
     document.querySelectorAll('[data-goto]').forEach(btn => {
       btn.addEventListener('click', () => goto(btn.dataset.goto));
     });
+    // Botón "Más" (solo celular): despliega las secciones secundarias
+    const more = document.getElementById('nav-more');
+    if (more) {
+      more.addEventListener('click', () => {
+        const open = !document.body.classList.contains('nav-more-open');
+        document.body.classList.toggle('nav-more-open', open);
+        more.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMoreMenu(); });
+    }
+    // Accesos rápidos del resumen
+    document.querySelectorAll('[data-quick="new-order"]').forEach(btn => {
+      btn.addEventListener('click', () => { goto('pedidos'); openOrderForm(); });
+    });
+    const dateEl = document.getElementById('topbar-date');
+    if (dateEl) {
+      const txt = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+      dateEl.textContent = txt.charAt(0).toUpperCase() + txt.slice(1);
+    }
     document.getElementById('btn-refresh').addEventListener('click', async () => {
       await reload();
       ui.toast('Panel actualizado', 'success');
     });
   }
 
+  function closeMoreMenu() {
+    document.body.classList.remove('nav-more-open');
+    const more = document.getElementById('nav-more');
+    if (more) more.setAttribute('aria-expanded', 'false');
+  }
+
   function goto(section) {
     state.section = section;
-    document.querySelectorAll('.panel-nav-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.section === section);
+    closeMoreMenu();
+    let label = '';
+    document.querySelectorAll('.panel-nav-btn[data-section]').forEach(b => {
+      const on = b.dataset.section === section;
+      b.classList.toggle('active', on);
+      if (on) label = b.getAttribute('title') || '';
     });
+    const more = document.getElementById('nav-more');
+    const activeBtn = document.querySelector('.panel-nav-btn[data-section="' + section + '"]');
+    if (more) more.classList.toggle('active', !!(activeBtn && activeBtn.classList.contains('nav-secondary')));
+    const topTitle = document.getElementById('topbar-section');
+    if (topTitle && label) topTitle.textContent = label;
     document.querySelectorAll('.panel-section').forEach(s => {
       s.classList.toggle('active', s.id === 'section-' + section);
     });
