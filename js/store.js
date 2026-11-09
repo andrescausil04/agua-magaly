@@ -280,6 +280,8 @@ window.MagalyStore = (function () {
       notes: raw.notes || '',
       failReason: raw.failReason || '',
       geo: raw.geo || null,
+      dataConsent: !!raw.dataConsent,
+      dataConsentAt: raw.dataConsentAt || '',
       events: events
     };
   }

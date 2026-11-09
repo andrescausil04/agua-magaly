@@ -12,8 +12,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/logo-magaly.png">
-  <link rel="stylesheet" href="css/styles.css?v=20261113">
-  <link rel="stylesheet" href="css/panel.css?v=20261113">
+  <link rel="stylesheet" href="css/styles.css?v=20261114">
+  <link rel="stylesheet" href="css/panel.css?v=20261114">
 </head>
 <body class="driver-app" id="driver-page">
 
@@ -85,6 +85,17 @@
       <div class="panel-card">
         <div class="panel-card-head">
           <div>
+            <h2>Permiso de ubicación</h2>
+            <p>Solo se usa al iniciar y confirmar una entrega</p>
+          </div>
+        </div>
+        <p id="geo-consent-status" style="font-size:13px;color:var(--ink-soft);margin:0 0 12px;line-height:1.6"></p>
+        <button type="button" class="btn btn-ghost" id="geo-consent-btn">Revisar permiso</button>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-card-head">
+          <div>
             <h2>Cambiar contraseña</h2>
             <p>Usa una clave que puedas recordar</p>
           </div>
@@ -123,10 +134,10 @@
     </button>
   </nav>
 
-  <script src="js/config.js?v=20261113"></script>
-  <script src="js/store.js?v=20261113"></script>
-  <script src="js/ui.js?v=20261113"></script>
-  <script src="js/auth.js?v=20261113"></script>
-  <script src="js/repartidor.js?v=20261113"></script>
+  <script src="js/config.js?v=20261114"></script>
+  <script src="js/store.js?v=20261114"></script>
+  <script src="js/ui.js?v=20261114"></script>
+  <script src="js/auth.js?v=20261114"></script>
+  <script src="js/repartidor.js?v=20261114"></script>
 </body>
 </html>

@@ -69,6 +69,36 @@ Todas las páginas incluyen:
 Ahora se exige un mínimo de **8 caracteres con letras y números** al crear o
 cambiar contraseñas. (Supabase permite subir aún más el mínimo; ver punto 3.)
 
+### 1.7 Cierre por inactividad y límite de intentos
+
+- **Cierre por inactividad:** si el panel de administración o de reparto pasa
+  **20 minutos sin actividad** (mouse, teclado, toque o desplazamiento), la
+  sesión se cierra y vuelve al login con el aviso “Tu sesión se cerró por
+  inactividad”.
+- **Límite de intentos:** tras **5 intentos fallidos** con el mismo usuario, el
+  navegador bloquea ese usuario **15 minutos**. Es una barrera adicional; el
+  servidor de Supabase también aplica sus propios límites. El bloqueo se guarda
+  en el navegador, así que no afecta a otros equipos.
+
+### 1.8 Aviso de privacidad y consentimiento
+
+- La tienda incluye una casilla obligatoria de **autorización de datos
+  personales** antes de enviar el pedido. Sin ella no se genera el mensaje de
+  WhatsApp.
+- El pedido guarda `dataConsent` y `dataConsentAt` como constancia.
+- La página **`privacidad.html`** explica responsable, datos, finalidad,
+  derechos (Ley 1581 de 2012), seguridad, conservación y ubicación del
+  repartidor. Está enlazada desde el pie de página y desde la casilla.
+
+### 1.9 Consentimiento de ubicación del repartidor
+
+- La ubicación es **opcional**. El repartidor la autoriza desde **Perfil →
+  Permiso de ubicación** o la primera vez que inicia una entrega.
+- Si dice “Ahora no”, puede entregar igual; el pedido se registra **sin
+  coordenadas**.
+- Puede retirar el permiso cuando quiera. El navegador solo la comparte al
+  iniciar o confirmar una entrega.
+
 ---
 
 ## 2. Aplicar el SQL de seguridad (obligatorio)
@@ -135,7 +165,9 @@ Authy. Así, aunque alguien robe la contraseña, no puede entrar sin el código.
 ### 3.4 Límites de intentos
 
 En **Authentication → Rate Limits**, deja los valores por defecto o baja el
-límite de intentos por correo/IP. Esto frena ataques de fuerza bruta.
+límite de intentos por correo/IP. Esto frena ataques de fuerza bruta desde el
+servidor. La web además bloquea 15 minutos el usuario tras 5 fallos seguidos
+(punto 1.7).
 
 ### 3.5 Copias de seguridad
 
@@ -209,3 +241,7 @@ Cuando esté desplegada:
 - [ ] Activé la política de contraseñas y MFA del administrador.
 - [ ] Revisé que `js/config.js` no tenga la clave `service_role`.
 - [ ] Programé una copia de seguridad.
+- [ ] Probé el cierre por inactividad (20 minutos) y el bloqueo tras 5 intentos.
+- [ ] Revisé que la casilla de autorización de datos bloquee el pedido sin marcar.
+- [ ] Probé el permiso de ubicación del repartidor (permitir, rechazar y retirar).
+- [ ] Ejecuté `database/storage-productos.sql` para habilitar las fotos de producto.

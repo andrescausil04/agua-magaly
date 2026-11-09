@@ -15,7 +15,104 @@ window.MagalyAuth = (function () {
   const SESSION_KEY = 'magaly_session';
   const SESSION_DAYS = 30;
 
+  // Cierre automático por inactividad (20 minutos sin usar el panel).
+  const IDLE_LIMIT_MS = 20 * 60 * 1000;
+  const IDLE_CHECK_MS = 30 * 1000;
+
+  // Límite de intentos fallidos de inicio de sesión.
+  // Es una barrera adicional en el navegador; Supabase también limita en el servidor.
+  const ATTEMPTS_KEY = 'magaly_login_attempts';
+  const MAX_ATTEMPTS = 5;
+  const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+  const BLOCK_MS = 15 * 60 * 1000;
+
+  let idleTimer = null;
+
   function store() { return window.MagalyStore; }
+
+  // ---------------------------------------------------------------------------
+  // Intentos de inicio de sesión
+  // ---------------------------------------------------------------------------
+  function readAttempts(username) {
+    try {
+      const all = JSON.parse(localStorage.getItem(ATTEMPTS_KEY) || '{}');
+      const item = all[username];
+      return item && typeof item === 'object' ? item : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function writeAttempts(username, data) {
+    try {
+      const all = JSON.parse(localStorage.getItem(ATTEMPTS_KEY) || '{}');
+      if (data) all[username] = data;
+      else delete all[username];
+      localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(all));
+    } catch (err) { /* almacenamiento no disponible */ }
+  }
+
+  function lockMinutesLeft(username) {
+    const item = readAttempts(username);
+    if (!item || !item.blockedUntil) return 0;
+    const left = item.blockedUntil - Date.now();
+    return left > 0 ? Math.ceil(left / 60000) : 0;
+  }
+
+  function registerFailure(username) {
+    const now = Date.now();
+    let item = readAttempts(username) || { count: 0, first: now };
+    if (!item.first || now - item.first > ATTEMPT_WINDOW_MS) {
+      item = { count: 0, first: now };
+    }
+    item.count = Number(item.count || 0) + 1;
+    if (item.count >= MAX_ATTEMPTS) {
+      item.blockedUntil = now + BLOCK_MS;
+    }
+    writeAttempts(username, item);
+    return MAX_ATTEMPTS - item.count;
+  }
+
+  function clearFailures(username) {
+    writeAttempts(username, null);
+  }
+
+  // Devuelve un mensaje claro y descuenta el intento fallido.
+  function failedLogin(username, message) {
+    const left = registerFailure(username);
+    if (left <= 0) {
+      return message + ' Por seguridad, espera 15 minutos antes de volver a intentar.';
+    }
+    return message + ' Te quedan ' + left + ' intento(s).';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cierre de sesión por inactividad
+  // ---------------------------------------------------------------------------
+  function startIdleGuard() {
+    if (idleTimer) return;
+    let last = Date.now();
+    const bump = () => { last = Date.now(); };
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach(name => document.addEventListener(name, bump, { passive: true }));
+
+    const onVisible = () => { if (!document.hidden) bump(); };
+    document.addEventListener('visibilitychange', onVisible);
+
+    idleTimer = setInterval(() => {
+      if (Date.now() - last < IDLE_LIMIT_MS) return;
+      stopIdleGuard();
+      try { sessionStorage.setItem('magaly_idle_logout', '1'); } catch (err) { /* ignora */ }
+      logout();
+    }, IDLE_CHECK_MS);
+  }
+
+  function stopIdleGuard() {
+    if (idleTimer) {
+      clearInterval(idleTimer);
+      idleTimer = null;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Rutas (funciona tanto en / como en /login/)
@@ -61,6 +158,7 @@ window.MagalyAuth = (function () {
   }
 
   function logout() {
+    stopIdleGuard();
     localStorage.removeItem(SESSION_KEY);
     const goLogin = () => { window.location.href = pathTo('login.html'); };
     if (store() && store().isCloud && store().isCloud()) {
@@ -85,6 +183,12 @@ window.MagalyAuth = (function () {
       return { ok: false, error: 'Escribe tu usuario y contraseña.' };
     }
 
+    // Bloqueo temporal tras varios intentos fallidos.
+    const locked = lockMinutesLeft(username);
+    if (locked > 0) {
+      return { ok: false, error: 'Demasiados intentos fallidos. Por seguridad, espera ' + locked + ' minuto(s) e inténtalo de nuevo.' };
+    }
+
     // Si la nube está configurada pero no responde, NO se permite el modo local.
     // Así nunca se puede entrar con las credenciales de prueba por un fallo.
     if (store().cloudConfigured && store().cloudConfigured() && !store().isCloud()) {
@@ -97,7 +201,7 @@ window.MagalyAuth = (function () {
       if (attempt.error) {
         const msg = String(attempt.error.message || '');
         if (/invalid login credentials/i.test(msg)) {
-          return { ok: false, error: 'Usuario o contraseña incorrectos. Verifica e intenta de nuevo.' };
+          return { ok: false, error: failedLogin(username, 'Usuario o contraseña incorrectos. Verifica e intenta de nuevo.') };
         }
         if (/email not confirmed/i.test(msg)) {
           return { ok: false, error: 'Esta cuenta aún no está confirmada. Pide al administrador que la active.' };
@@ -118,6 +222,7 @@ window.MagalyAuth = (function () {
       if (attempt.data && attempt.data.session) {
         store().setRealtimeAuth(attempt.data.session.access_token);
       }
+      clearFailures(username);
       writeSession(me, remember);
       return { ok: true, user: me, redirect: homeFor(me.role) };
     }
@@ -127,7 +232,7 @@ window.MagalyAuth = (function () {
     const user = users.find(u => u.username === username);
 
     if (!user) {
-      return { ok: false, error: 'Ese usuario no existe. Verifica con el administrador.' };
+      return { ok: false, error: failedLogin(username, 'Usuario o contraseña incorrectos. Verifica e intenta de nuevo.') };
     }
     if (!user.active) {
       return { ok: false, error: 'Esta cuenta está desactivada. Contacta al administrador.' };
@@ -135,9 +240,10 @@ window.MagalyAuth = (function () {
 
     const hash = await store().hashPassword(password);
     if (hash !== user.hash) {
-      return { ok: false, error: 'Contraseña incorrecta. Inténtalo de nuevo.' };
+      return { ok: false, error: failedLogin(username, 'Usuario o contraseña incorrectos. Verifica e intenta de nuevo.') };
     }
 
+    clearFailures(username);
     writeSession(user, remember);
     return { ok: true, user: user, redirect: homeFor(user.role) };
   }
@@ -188,6 +294,8 @@ window.MagalyAuth = (function () {
       window.location.replace(homeFor(user.role));
       return null;
     }
+    // Con sesión válida, vigila la inactividad mientras se usa el panel.
+    startIdleGuard();
     return user;
   }
 
@@ -228,6 +336,17 @@ window.MagalyAuth = (function () {
     const errorBox = document.getElementById('login-error');
     const submitBtn = form.querySelector('button[type="submit"]');
     const demoBox = document.getElementById('login-demo');
+
+    // Si llegó aquí por el cierre automático de inactividad, se lo explicamos.
+    let idleLogout = '';
+    try {
+      idleLogout = sessionStorage.getItem('magaly_idle_logout') || '';
+      if (idleLogout) sessionStorage.removeItem('magaly_idle_logout');
+    } catch (err) { /* ignora */ }
+    if (idleLogout && errorBox) {
+      errorBox.textContent = 'Tu sesión se cerró por inactividad. Ingresa de nuevo para continuar.';
+      errorBox.style.display = 'block';
+    }
 
     if (demoBox) {
       if (store().cloudConfigured && store().cloudConfigured()) {

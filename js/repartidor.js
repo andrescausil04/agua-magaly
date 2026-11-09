@@ -12,6 +12,8 @@
   const U = store.utils;
   const STATUS = store.ORDER_STATUS;
 
+  const GEO_CONSENT_KEY = 'magaly_geo_consent';
+
   const state = {
     driver: null,
     orders: [],
@@ -20,6 +22,71 @@
     seenReady: false,   // en la primera carga no avisamos de lo que ya existía
     seen: new Set()     // pedidos que el repartidor ya conoce
   };
+
+  // --------------------------------------------------------------------------
+  // Consentimiento de ubicación
+  // --------------------------------------------------------------------------
+  function geoConsent() {
+    try { return localStorage.getItem(GEO_CONSENT_KEY) || ''; } catch (err) { return ''; }
+  }
+
+  function setGeoConsent(value) {
+    try { localStorage.setItem(GEO_CONSENT_KEY, value); } catch (err) { /* ignora */ }
+  }
+
+  function renderGeoConsent() {
+    const status = document.getElementById('geo-consent-status');
+    const btn = document.getElementById('geo-consent-btn');
+    if (!status || !btn) return;
+    const value = geoConsent();
+    if (value === 'yes') {
+      status.textContent = '✅ Autorizaste compartir tu ubicación al iniciar y confirmar entregas. Puedes retirarla cuando quieras.';
+      btn.textContent = 'Retirar permiso';
+    } else if (value === 'no') {
+      status.textContent = 'No autorizaste la ubicación. Puedes entregar igual; el pedido se registra sin coordenadas.';
+      btn.textContent = 'Permitir ubicación';
+    } else {
+      status.textContent = 'Aún no has decidido. La ubicación es opcional y solo se usa durante las entregas.';
+      btn.textContent = 'Permitir ubicación';
+    }
+  }
+
+  async function askGeoConsent() {
+    const value = geoConsent();
+    if (value === 'yes') {
+      const remove = await ui.confirmDialog({
+        title: 'Retirar permiso de ubicación',
+        message: 'Si retiras el permiso, las próximas entregas se registrarán sin coordenadas. ¿Deseas continuar?',
+        confirmText: 'Sí, retirar',
+        cancelText: 'Cancelar',
+        danger: true
+      });
+      if (!remove) return false;
+      setGeoConsent('no');
+      renderGeoConsent();
+      ui.toast('Permiso de ubicación retirado.', 'warn');
+      return false;
+    }
+
+    const accept = await ui.confirmDialog({
+      title: 'Permiso de ubicación',
+      message: 'Agua Magaly usará la ubicación de tu celular solo cuando inicies o confirmes una entrega, para dejar constancia de la ruta. Es opcional y puedes retirarla cuando quieras.',
+      confirmText: 'Permitir ubicación',
+      cancelText: 'Ahora no'
+    });
+    setGeoConsent(accept ? 'yes' : 'no');
+    renderGeoConsent();
+    if (accept) {
+      ui.toast('Permiso de ubicación activado. Se usará solo durante las entregas.', 'success');
+    }
+    return accept;
+  }
+
+  function bindGeoConsent() {
+    const btn = document.getElementById('geo-consent-btn');
+    if (btn) btn.addEventListener('click', () => { askGeoConsent(); });
+    renderGeoConsent();
+  }
 
   // ==========================================================================
   // ARRANQUE
@@ -38,6 +105,7 @@
     bindNavigation();
     bindPasswordForm();
     bindNotifications();
+    bindGeoConsent();
     await reload();
 
     setInterval(reload, 10000);
@@ -362,6 +430,8 @@
   // ==========================================================================
   function withGeo() {
     return new Promise(resolve => {
+      // Sin autorización expresa del repartidor, no se pide la ubicación.
+      if (geoConsent() !== 'yes') return resolve(null);
       if (!navigator.geolocation) return resolve(null);
       const timer = setTimeout(() => resolve(null), 6000);
       navigator.geolocation.getCurrentPosition(
@@ -378,6 +448,9 @@
   async function startDelivery(id) {
     const order = state.orders.find(o => o.id === id);
     if (!order) return;
+
+    // Primera entrega: explicamos y pedimos el permiso de ubicación.
+    if (!geoConsent()) await askGeoConsent();
 
     ui.toast('Registrando salida a ruta…');
     const geo = await withGeo();

@@ -139,6 +139,7 @@
   const custPhoneInput = document.getElementById('cust-phone');
   const custAddressInput = document.getElementById('cust-address');
   const custCityInput = document.getElementById('cust-city');
+  const custConsentInput = document.getElementById('cust-consent');
   const custPhoneHint = document.getElementById('cust-phone-hint');
   const custValidationMsg = document.getElementById('cust-validation-msg');
   const quejasForm = document.getElementById('quejas-form');
@@ -149,6 +150,7 @@
     let phone = custPhoneInput ? custPhoneInput.value.trim() : '';
     const address = custAddressInput ? custAddressInput.value.trim() : '';
     const city = custCityInput ? custCityInput.value.trim() : '';
+    const consent = !!(custConsentInput && custConsentInput.checked);
 
     // El teléfono debe ser numérico, exactamente 10 dígitos y empezar por 3
     const isNumeric = /^\d+$/.test(phone);
@@ -161,10 +163,11 @@
       phone,
       address,
       city,
+      consent,
       phoneValid,
       startsWithThree,
       isTenDigits,
-      isValid: name.length >= 3 && address.length >= 4 && city.length >= 3 && phoneValid
+      isValid: name.length >= 3 && address.length >= 4 && city.length >= 3 && phoneValid && consent
     };
   }
 
@@ -203,6 +206,11 @@
       }
     }
 
+    // La autorización se marca en rojo mientras no esté aceptada.
+    if (custConsentInput && custConsentInput.parentElement) {
+      custConsentInput.parentElement.classList.toggle('is-invalid', !data.consent);
+    }
+
     if (showErrors) {
       if (custNameInput) {
         custNameInput.classList.toggle('is-invalid', data.name.length < 3);
@@ -216,7 +224,6 @@
         custCityInput.classList.toggle('is-invalid', data.city.length < 3);
         custCityInput.classList.toggle('is-valid', data.city.length >= 3);
       }
-
       if (custValidationMsg) {
         const missing = [];
         if (data.name.length < 3) missing.push('Nombre completo');
@@ -226,6 +233,7 @@
         }
         if (data.address.length < 4) missing.push('Dirección de entrega');
         if (data.city.length < 3) missing.push('Municipio y Departamento');
+        if (!data.consent) missing.push('Autorización de datos personales');
 
         if (missing.length > 0) {
           custValidationMsg.style.display = 'block';
@@ -259,6 +267,14 @@
       });
     }
   });
+
+  // Al marcar o desmarcar la autorización se recalcula el pedido y el botón.
+  if (custConsentInput) {
+    custConsentInput.addEventListener('change', () => {
+      validateCustomerFields(false);
+      renderCart();
+    });
+  }
 
   /**
    * Renderiza el catálogo dinámico de productos
@@ -465,6 +481,7 @@
           `📱 *Teléfono de contacto:* ${clientPhone}`,
           `📍 *Dirección:* ${clientAddress}`,
           `🏙️ *Municipio / Depto:* ${clientCity}`,
+          '✅ *Autorización de datos personales:* aceptada',
           '──────────────────────────',
           'Por favor confírmenme disponibilidad y horario de despacho. ¡Muchas gracias!'
         ];
@@ -501,6 +518,8 @@
             payment: 'Efectivo',
             paid: false,
             notes: '',
+            dataConsent: true,
+            dataConsentAt: createdAt,
             events: [{ type: 'creado', at: createdAt, by: 'Cliente (web)', note: 'Pedido enviado por WhatsApp' }]
           };
           orders.unshift(newOrder);
