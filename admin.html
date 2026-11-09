@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/logo-magaly.png">
-  <link rel="stylesheet" href="css/styles.css?v=20261116">
-  <link rel="stylesheet" href="css/panel.css?v=20261116">
+  <link rel="stylesheet" href="css/styles.css?v=2026110902">
+  <link rel="stylesheet" href="css/panel.css?v=2026110902">
 </head>
 <body class="panel-shell" id="admin-page">
 
@@ -35,6 +35,13 @@
       <button type="button" class="panel-nav-btn" data-section="pedidos" title="Pedidos" aria-label="Pedidos">
         <span class="nav-ico" aria-hidden="true">🧾</span><span class="nav-label-long">Pedidos</span>
         <span class="nav-count" id="count-orders">0</span>
+      </button>
+      <button type="button" class="panel-nav-btn" data-section="reportes" title="Reportes" aria-label="Reportes">
+        <span class="nav-ico" aria-hidden="true">📈</span><span class="nav-label-long">Reportes</span>
+      </button>
+      <button type="button" class="panel-nav-btn" data-section="inventario" title="Inventario" aria-label="Inventario">
+        <span class="nav-ico" aria-hidden="true">🏷️</span><span class="nav-label-long">Inventario</span>
+        <span class="nav-count" id="count-inventory">0</span>
       </button>
       <button type="button" class="panel-nav-btn" data-section="repartidores" title="Repartidores" aria-label="Repartidores">
         <span class="nav-ico" aria-hidden="true">🛵</span><span class="nav-label-long">Repartidores</span>
@@ -86,11 +93,13 @@
           <p id="resumen-subtitle">Cargando información…</p>
         </div>
         <div class="panel-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-notif" style="color:var(--blue-deep);border-color:var(--rule)" title="Sonido y aviso cuando llegue un pedido nuevo">🔔 Avisos</button>
           <button type="button" class="btn btn-ghost btn-sm" id="btn-refresh" style="color:var(--blue-deep);border-color:var(--rule)">↻ Actualizar</button>
           <a href="index.html" class="btn btn-primary btn-sm" target="_blank" rel="noopener">Ver tienda</a>
         </div>
       </div>
 
+      <div id="stock-alert" class="stock-alert" hidden></div>
       <div class="kpi-grid" id="kpi-grid"></div>
 
       <div class="dash-grid">
@@ -161,6 +170,89 @@
       <div class="kanban" id="kanban"></div>
     </section>
 
+    <!-- REPORTES -->
+    <section class="panel-section" id="section-reportes">
+      <div class="panel-head-row">
+        <div>
+          <h1>Reportes de ventas</h1>
+          <p>Ventas entregadas por producto, ruta y repartidor. Úsalo para planear la producción y las rutas.</p>
+        </div>
+        <div class="panel-actions">
+          <div class="seg" id="report-range">
+            <button type="button" class="active" data-range="7">7 días</button>
+            <button type="button" data-range="30">30 días</button>
+            <button type="button" data-range="mes">Este mes</button>
+            <button type="button" data-range="todo">Todo</button>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-export-report" style="color:var(--blue-deep);border-color:var(--rule)">⬇ Exportar ventas</button>
+        </div>
+      </div>
+      <div class="kpi-grid" id="report-kpis"></div>
+      <div class="panel-card">
+        <div class="panel-card-head">
+          <div><h2>Ventas por día</h2><p>Pedidos entregados en el periodo</p></div>
+          <span class="chip" id="report-total">$0</span>
+        </div>
+        <div class="report-days" id="report-days"></div>
+      </div>
+      <div class="report-grid">
+        <div class="panel-card">
+          <div class="panel-card-head"><div><h2>Por producto</h2><p>Pacas vendidas y dinero</p></div></div>
+          <div id="report-products"></div>
+        </div>
+        <div class="panel-card">
+          <div class="panel-card-head"><div><h2>Por ruta</h2><p>Según la ruta asignada al pedido</p></div></div>
+          <div id="report-routes"></div>
+        </div>
+        <div class="panel-card">
+          <div class="panel-card-head"><div><h2>Por repartidor</h2><p>Entregas y cobros</p></div></div>
+          <div id="report-drivers"></div>
+        </div>
+        <div class="panel-card">
+          <div class="panel-card-head"><div><h2>Horas con más pedidos</h2><p>Para saber cuándo reforzar el reparto</p></div></div>
+          <div id="report-hours"></div>
+        </div>
+      </div>
+    </section>
+    <!-- INVENTARIO -->
+    <section class="panel-section" id="section-inventario">
+      <div class="panel-head-row">
+        <div>
+          <h1>Inventario de pacas</h1>
+          <p>El stock baja solo cuando un pedido se marca como entregado. Registra aquí la producción del día y los conteos.</p>
+        </div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-card-head"><div><h2>Existencias</h2><p>Alerta cuando un producto llega a su mínimo</p></div></div>
+        <div class="table-wrap" style="overflow-x:auto">
+          <table class="table-min">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th style="text-align:right">Stock</th>
+                <th style="text-align:right">Mínimo</th>
+                <th>Estado</th>
+                <th style="text-align:right">Vendido 30 días</th>
+                <th style="text-align:right">Alcanza para</th>
+                <th style="text-align:right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel-card">
+        <div class="panel-card-head"><div><h2>Movimientos recientes</h2><p>Producción, ajustes y ventas entregadas</p></div></div>
+        <div class="table-wrap" style="overflow-x:auto">
+          <table class="table-min">
+            <thead>
+              <tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th style="text-align:right">Cantidad</th><th>Detalle</th><th>Por</th></tr>
+            </thead>
+            <tbody id="stock-moves-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
     <!-- REPARTIDORES -->
     <section class="panel-section" id="section-repartidores">
       <div class="panel-head-row">
@@ -274,7 +366,7 @@
           <div class="panel-card-head">
             <div>
               <h2>Cambiar contraseña</h2>
-              <p>Mínimo 6 caracteres</p>
+              <p>Mínimo 8 caracteres, con letras y números</p>
             </div>
           </div>
           <form id="account-password-form" class="form-grid">
@@ -284,11 +376,11 @@
             </div>
             <div class="form-field full">
               <label for="acc-new">Contraseña nueva</label>
-              <input type="password" id="acc-new" autocomplete="new-password" required minlength="6">
+              <input type="password" id="acc-new" autocomplete="new-password" required minlength="8">
             </div>
             <div class="form-field full">
               <label for="acc-repeat">Repetir contraseña nueva</label>
-              <input type="password" id="acc-repeat" autocomplete="new-password" required minlength="6">
+              <input type="password" id="acc-repeat" autocomplete="new-password" required minlength="8">
             </div>
             <div class="full">
               <button type="submit" class="btn btn-primary" style="width:100%">Guardar contraseña</button>
@@ -340,10 +432,10 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=20261116"></script>
-  <script src="js/store.js?v=20261116"></script>
-  <script src="js/ui.js?v=20261116"></script>
-  <script src="js/auth.js?v=20261116"></script>
-  <script src="js/admin.js?v=20261116"></script>
+  <script src="js/config.js?v=2026110902"></script>
+  <script src="js/store.js?v=2026110902"></script>
+  <script src="js/ui.js?v=2026110902"></script>
+  <script src="js/auth.js?v=2026110902"></script>
+  <script src="js/admin.js?v=2026110902"></script>
 </body>
 </html>

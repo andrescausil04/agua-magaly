@@ -20,6 +20,8 @@
 --   * El administrador gestiona todo el catálogo, rutas, PQRS y personal.
 --   * El catálogo de productos y los ajustes son de lectura pública.
 --   * Para bases ya creadas, aplica también database/security-hardening.sql.
+--   * DESPUÉS de este archivo ejecuta database/mejoras-2026.sql (doble factor,
+--     total calculado en el servidor, anti-spam, seguimiento e inventario).
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------

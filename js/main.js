@@ -39,20 +39,6 @@
     return 'assets/bolsa-250ml.jpg';
   }
 
-  /**
-   * Guarda un registro en la base de datos en la nube, si está configurada.
-   * Si no hay nube, no hace nada (el guardado local ya ocurrió).
-   */
-  function pushCloud(entity, record) {
-    if (!store) return;
-    store.ready()
-      .then(() => {
-        if (!store.isCloud()) return null;
-        return store.upsert(entity, record);
-      })
-      .catch(err => console.warn('[tienda] no se pudo guardar en la nube:', err));
-  }
-
   // Productos predeterminados
   const DEFAULT_PRODUCTS = [
     {
@@ -124,6 +110,35 @@
 
   // Estado reactivo del carrito
   const cart = {};
+
+  // Código del pedido que se está armando (va en el mensaje de WhatsApp).
+  let pendingCode = newCode();
+
+  function newCode() {
+    if (store && store.newOrderCode) return store.newOrderCode();
+    return 'AM-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+  }
+
+  // Pedidos de este dispositivo (para seguirlos y repetirlos). No sale del celular.
+  const MY_ORDERS_KEY = 'magaly_my_orders';
+  const LAST_ORDER_KEY = 'magaly_last_order';
+
+  function readJson(key, fallback) {
+    try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (err) { return fallback; }
+  }
+  function writeJson(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (err) { /* sin espacio */ }
+  }
+
+  // Un producto con inventario en cero se muestra agotado.
+  function isSoldOut(p) {
+    return typeof p.stock === 'number' && p.stock <= 0;
+  }
+
+  function trackingUrl(code) {
+    try { return new URL('seguimiento.html?codigo=' + encodeURIComponent(code), window.location.href).href; }
+    catch (err) { return 'seguimiento.html?codigo=' + encodeURIComponent(code); }
+  }
 
   // Elementos DOM
   const productsContainer = document.getElementById('products-container');
@@ -288,8 +303,10 @@
       // Inicializar contador en carrito si no existe
       if (cart[p.id] === undefined) cart[p.id] = 0;
 
+      const soldOut = isSoldOut(p);
+      if (soldOut) cart[p.id] = 0;
       const row = document.createElement('div');
-      row.className = 'product-row';
+      row.className = 'product-row' + (soldOut ? ' is-soldout' : '');
       row.dataset.id = p.id;
       row.dataset.price = p.price;
 
@@ -299,19 +316,20 @@
         </div>
         <div class="product-info">
           <h3>${esc(p.name)}</h3>
-          <span class="badge-tag">${esc(p.badge || 'Producto')}</span>
+          <span class="badge-tag">${esc(p.badge || 'Producto')}</span>${soldOut ? ' <span class="badge-tag badge-soldout">Agotado por hoy</span>' : ''}
           <div class="desc">${esc(p.desc || '')}</div>
           <div class="price">${formatMoney(p.price)} <span class="note">${esc(p.unit || '')}</span></div>
         </div>
         <div class="qty-stepper">
           <button type="button" class="qty-minus" aria-label="Quitar ${esc(p.name)}">–</button>
           <span class="qty-val">${cart[p.id] || 0}</span>
-          <button type="button" class="qty-plus" aria-label="Agregar ${esc(p.name)}">+</button>
+          <button type="button" class="qty-plus" aria-label="Agregar ${esc(p.name)}"${soldOut ? ' disabled' : ''}>+</button>
         </div>
         <div class="row-subtotal">${formatMoney(p.price * (cart[p.id] || 0))}</div>
       `;
 
       row.querySelector('.qty-plus').addEventListener('click', () => {
+        if (isSoldOut(p)) return;
         cart[p.id] = (cart[p.id] || 0) + 1;
         renderCart();
       });
@@ -455,13 +473,16 @@
 
         const summaryItems = [];
         const itemsTextLines = [];
+        const orderLines = [];
         Object.keys(cart).forEach(id => {
           if (cart[id] > 0 && productMap[id]) {
             const p = productMap[id];
             itemsTextLines.push(`• *${cart[id]}* × ${p.name} (${formatMoney(cart[id] * p.price)})`);
             summaryItems.push(`${cart[id]} × ${p.name}`);
+            orderLines.push({ id: p.id, name: p.name, qty: cart[id], price: Number(p.price) || 0 });
           }
         });
+        const orderCode = pendingCode;
 
         const clientName = custData.name || 'Cliente Web';
         const clientPhone = custData.phone || 'Contacto por este chat';
@@ -470,6 +491,7 @@
 
         const messageLines = [
           '💧 *¡HOLA AGUA MAGALY! DESEO REALIZAR UN PEDIDO:*',
+          `🧾 *Código del pedido:* ${orderCode}`,
           '──────────────────────────',
           '*DETALLE DE LA COMPRA:*',
           ...itemsTextLines,
@@ -483,6 +505,7 @@
           `🏙️ *Municipio / Depto:* ${clientCity}`,
           '✅ *Autorización de datos personales:* aceptada',
           '──────────────────────────',
+          `📍 Seguir mi pedido: ${trackingUrl(orderCode)}`,
           'Por favor confírmenme disponibilidad y horario de despacho. ¡Muchas gracias!'
         ];
 
@@ -499,12 +522,12 @@
 
         // Al hacer click, registrar pedido en LocalStorage (Admin) y permitir redirección directa al chat de WhatsApp
         waBtn.onclick = function () {
-          const orders = getOrders();
-          const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
+          const orderId = orderCode;
           const createdAt = new Date().toISOString();
           const newOrder = {
             id: orderId,
             code: orderId,
+            lines: orderLines,
             client: clientName,
             phone: clientPhone,
             address: `${clientAddress} (${clientCity})`,
@@ -522,13 +545,136 @@
             dataConsentAt: createdAt,
             events: [{ type: 'creado', at: createdAt, by: 'Cliente (web)', note: 'Pedido enviado por WhatsApp' }]
           };
-          orders.unshift(newOrder);
-          saveOrders(orders);
-          pushCloud('orders', newOrder);
-          // El navegador abre directWaUrl en nueva pestaña de WhatsApp directamente
+          // El navegador abre WhatsApp en otra pestaña; aquí registramos el pedido
+          // y le mostramos al cliente su código para seguirlo.
+          registerOrder(newOrder, {
+            name: clientName, phone: clientPhone, address: clientAddress, city: clientCity,
+            lines: orderLines.map(l => ({ id: l.id, qty: l.qty }))
+          });
         };
       }
     }
+  }
+
+  // ==========================================================================
+  // REGISTRO DEL PEDIDO, RESULTADO Y "REPETIR PEDIDO"
+  // ==========================================================================
+  function resultBox() {
+    let box = document.getElementById('order-result');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'order-result';
+      box.className = 'order-result';
+      box.setAttribute('role', 'status');
+      const summary = document.querySelector('.order-summary');
+      if (summary && summary.parentNode) summary.parentNode.insertBefore(box, summary.nextSibling);
+    }
+    return box;
+  }
+
+  function showResult(ok, code, extra) {
+    const box = resultBox();
+    if (!box) return;
+    box.className = 'order-result ' + (ok ? 'is-ok' : 'is-warn');
+    box.innerHTML = ok
+      ? `<strong>✓ Pedido ${esc(code)} registrado.</strong> Termina de enviarlo en WhatsApp. ` +
+        `<a href="seguimiento.html?codigo=${encodeURIComponent(code)}">Seguir mi pedido →</a>`
+      : `<strong>⚠️ No pudimos registrar el pedido en el sistema.</strong> ${esc(extra || '')} ` +
+        'Tu mensaje de WhatsApp igual le llega a Agua Magaly.';
+    box.hidden = false;
+  }
+
+  function friendlyOrderError(err) {
+    const msg = String((err && (err.message || err.details)) || '');
+    if (/varios pedidos|muchas solicitudes|celular|productos válidos/i.test(msg)) return msg;
+    if (/fetch|network|Failed/i.test(msg)) return 'Parece que no hay conexión a internet.';
+    return 'Inténtalo de nuevo en unos minutos.';
+  }
+
+  async function registerOrder(order, memory) {
+    const cloud = store && (await store.ready().then(() => store.isCloud()).catch(() => false));
+    let ok = true;
+    let reason = '';
+    try {
+      if (cloud) {
+        await store.upsert('orders', order);
+      } else {
+        const orders = getOrders();
+        orders.unshift(order);
+        saveOrders(orders);
+      }
+    } catch (err) {
+      ok = false;
+      reason = friendlyOrderError(err);
+      console.warn('[tienda] no se pudo registrar el pedido:', err);
+    }
+
+    if (ok) {
+      // Se guarda en este dispositivo para seguirlo o repetirlo después.
+      const mine = readJson(MY_ORDERS_KEY, []).filter(o => o.code !== order.code);
+      mine.unshift({ code: order.code, phone: order.phone, items: order.items, total: order.total, createdAt: order.createdAt });
+      writeJson(MY_ORDERS_KEY, mine.slice(0, 10));
+      writeJson(LAST_ORDER_KEY, Object.assign({ savedAt: new Date().toISOString() }, memory));
+      Object.keys(cart).forEach(k => (cart[k] = 0));
+      if (custConsentInput) custConsentInput.checked = false;
+      pendingCode = newCode();
+      renderCart();
+      renderRepeatButton();
+    }
+    showResult(ok, order.code, reason);
+  }
+
+  function renderRepeatButton() {
+    const last = readJson(LAST_ORDER_KEY, null);
+    let btn = document.getElementById('repeat-order-btn');
+    const head = document.querySelector('.cart-head');
+    if (!last || !Array.isArray(last.lines) || !last.lines.length || !head) {
+      if (btn) btn.remove();
+      return;
+    }
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'repeat-order-btn';
+      btn.className = 'btn-text repeat-order-btn';
+      btn.textContent = '↺ Repetir mi último pedido';
+      btn.title = 'Carga los mismos productos y tus datos de entrega';
+      head.insertBefore(btn, head.lastElementChild);
+      btn.addEventListener('click', repeatLastOrder);
+    }
+  }
+
+  function repeatLastOrder() {
+    const last = readJson(LAST_ORDER_KEY, null);
+    if (!last) return;
+    const products = getProducts();
+    let added = 0;
+    let missing = 0;
+    Object.keys(cart).forEach(k => (cart[k] = 0));
+    (last.lines || []).forEach(line => {
+      const p = products.find(x => x.id === line.id && x.active);
+      if (!p || isSoldOut(p)) { missing++; return; }
+      cart[p.id] = Math.max(0, Math.floor(Number(line.qty) || 0));
+      added += cart[p.id];
+    });
+    if (custNameInput && last.name) custNameInput.value = last.name;
+    if (custPhoneInput && last.phone) custPhoneInput.value = String(last.phone).replace(/\D/g, '').slice(-10);
+    if (custAddressInput && last.address) custAddressInput.value = last.address;
+    if (custCityInput && last.city) custCityInput.value = last.city;
+    renderCatalog();
+    validateCustomerFields(false);
+    renderCart();
+    const box = resultBox();
+    if (box) {
+      box.className = 'order-result is-ok';
+      box.innerHTML = added
+        ? '<strong>Listo:</strong> cargamos tu último pedido' + (missing ? ' (algún producto ya no está disponible)' : '') +
+          '. Revisa las cantidades, marca la autorización de datos y envíalo.'
+        : '<strong>Los productos de tu último pedido no están disponibles hoy.</strong>';
+      box.hidden = false;
+    }
+    const card = document.getElementById('customer-data-card');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   // Botón para vaciar carrito
@@ -560,6 +706,7 @@
   // Render inicial del catálogo y carrito
   renderCatalog();
   renderCart();
+  renderRepeatButton();
 
   // Si hay base de datos en la nube, trae el catálogo real (precios y fotos)
   if (store) {
@@ -609,7 +756,7 @@
         status: 'Nueva'
       });
       savePQRS(pqrsList);
-      pushCloud('pqrs', pqrsList[0]);
+      const pqrsRecord = pqrsList[0];
 
       const pqrsLines = [
         `📋 *NUEVA SOLICITUD DE ${tipo.toUpperCase()} — AGUA MAGALY*`,
@@ -628,9 +775,30 @@
       if (quejasStatus) {
         quejasStatus.style.display = 'block';
         quejasStatus.style.color = '#BFE0EE';
-        quejasStatus.textContent = '¡Gracias! Tu reporte ha sido registrado y enviado por WhatsApp.';
+        quejasStatus.textContent = 'Enviando tu reporte…';
       }
       quejasForm.reset();
+
+      // Se registra en el sistema y se informa si el servidor lo rechazó.
+      (async () => {
+        let message = '¡Gracias! Tu reporte quedó registrado y enviado por WhatsApp.';
+        let color = '#BFE0EE';
+        try {
+          const cloud = store && (await store.ready().then(() => store.isCloud()).catch(() => false));
+          if (cloud) await store.upsert('pqrs', pqrsRecord);
+        } catch (err) {
+          console.warn('[tienda] no se pudo registrar la PQRS:', err);
+          const text = String((err && err.message) || '');
+          message = /varios mensajes|muchas solicitudes/i.test(text)
+            ? text + ' Tu mensaje de WhatsApp sí se envió.'
+            : 'Tu mensaje se envió por WhatsApp, pero no quedó registrado en el sistema. Inténtalo más tarde.';
+          color = '#FFE3A3';
+        }
+        if (quejasStatus) {
+          quejasStatus.style.color = color;
+          quejasStatus.textContent = message;
+        }
+      })();
     });
   }
 

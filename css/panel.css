@@ -2003,3 +2003,30 @@ body.has-twofa-gate {
 
   .twofa-gate-card h2 { font-size: 19px; }
 }
+
+/* ==========================================================================
+   MEJORAS 2026: reportes, inventario, avisos
+   ========================================================================== */
+.report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .report-grid { grid-template-columns: 1fr; } }
+.report-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.report-bar-label { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; margin-bottom: 4px; }
+.report-bar-label span { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-bar { height: 10px; background: #EEF3F6; border-radius: 99px; overflow: hidden; }
+.report-bar span { display: block; height: 100%; background: linear-gradient(90deg, #1C7FA8, #0B4F73); border-radius: 99px; }
+.report-bars small { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 3px; }
+.report-cols { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 4px; align-items: end; height: 190px; padding-top: 8px; }
+.report-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; min-width: 0; }
+.report-col-bar { width: min(36px, 80%); background: linear-gradient(180deg, #1C7FA8, #0B4F73); border-radius: 6px 6px 2px 2px; min-height: 2px; }
+.report-col small { font-size: 10.5px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; }
+.stock-alert { margin: 0 0 16px; padding: 12px 14px; border-radius: 10px; background: #FFF6E5; border: 1px solid #F2D08B; color: #7A4B00; font-size: 14px; }
+.stock-alert .btn-text { color: #7A4B00; font-weight: 700; text-decoration: underline; background: none; border: 0; cursor: pointer; }
+.drawer-label { display: block; font-size: 12px; font-weight: 700; color: var(--ink-soft); margin: 2px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+#btn-notif.is-on { background: #EAF6EF; border-color: #BFE3CD !important; color: #14532D !important; }
+.table-min td.muted { color: var(--ink-soft); font-style: italic; }
+.report-grid { margin-top: 18px; }
+.report-grid > .panel-card, .account-grid > .panel-card { margin-top: 0; }
+.offline-banner {
+  position: sticky; top: 0; z-index: 30; margin: 0; padding: 10px 16px; text-align: center;
+  background: #FFF6E5; color: #7A4B00; border-bottom: 1px solid #F2D08B; font-size: 13.5px; font-weight: 600;
+}

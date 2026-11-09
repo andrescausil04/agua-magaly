@@ -2341,3 +2341,71 @@ div[id="productos"] {
   .legal-card h2 { font-size: 18px; }
   .legal-actions .btn { width: 100%; text-align: center; }
 }
+
+/* ==========================================================================
+   MEJORAS 2026: resultado del pedido, agotado, repetir pedido
+   ========================================================================== */
+.order-result {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  line-height: 1.5;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
+.order-result.is-ok { background: #EAF6EF; border-color: #BFE3CD; color: #14532D; }
+.order-result.is-warn { background: #FFF6E5; border-color: #F2D08B; color: #7A4B00; }
+.order-result a { color: inherit; font-weight: 700; text-decoration: underline; }
+
+.product-row.is-soldout { opacity: 0.6; }
+.product-row.is-soldout .qty-plus { cursor: not-allowed; }
+.badge-tag.badge-soldout { background: #FDECEC; color: #9B2C2C; border-color: #F5C2C2; }
+.repeat-order-btn { margin-right: auto; margin-left: 12px; color: var(--blue-mid); font-weight: 700; }
+
+/* ==========================================================================
+   SEGUIMIENTO DEL PEDIDO
+   ========================================================================== */
+.track-card { max-width: 520px; }
+.track-form { display: grid; gap: 14px; }
+.track-form .form-row { display: grid; gap: 6px; }
+.track-form .form-row input { width: 100%; border-radius: var(--radius); font: inherit; }
+.track-error {
+  margin-top: 16px; padding: 10px 12px; border-radius: var(--radius);
+  background: #FDF2F2; border: 1px solid #F8D7DA; color: #B23B3B; font-size: 14px; font-weight: 600;
+}
+.track-result { margin-top: 22px; border-top: 1px solid var(--rule); padding-top: 18px; }
+.track-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.track-head strong { display: block; font-size: 20px; color: var(--blue-deep); }
+.track-code { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: var(--ink-soft); }
+.track-total { font-weight: 700; font-size: 18px; }
+.track-banner { padding: 10px 12px; border-radius: var(--radius); font-size: 14px; margin-bottom: 12px; }
+.track-banner.is-ok { background: #EAF6EF; color: #14532D; }
+.track-banner.is-warn { background: #FFF6E5; color: #7A4B00; }
+.track-banner.is-bad { background: #FDECEC; color: #9B2C2C; }
+.track-steps { list-style: none; margin: 0 0 12px; padding: 0; }
+.track-steps li { display: flex; gap: 12px; position: relative; padding: 0 0 16px 0; color: var(--ink-soft); }
+.track-steps li:not(:last-child)::before {
+  content: ''; position: absolute; left: 8px; top: 20px; bottom: 0; width: 2px; background: var(--rule);
+}
+.track-steps li.is-done:not(:last-child)::before { background: var(--success); }
+.track-steps .dot { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--rule); background: #fff; margin-top: 2px; }
+.track-steps li.is-done .dot { background: var(--success); border-color: var(--success); }
+.track-steps li.is-now .dot { border-color: var(--blue-mid); box-shadow: 0 0 0 4px var(--blue-glow); }
+.track-steps li.is-done, .track-steps li.is-now { color: var(--ink); }
+.track-steps b { display: block; font-size: 15px; }
+.track-steps small { font-size: 13px; color: var(--ink-soft); }
+.track-items { font-size: 14px; margin: 6px 0; }
+.track-updated { font-size: 12px; color: var(--ink-soft); margin: 0; }
+.my-orders { margin-top: 24px; border-top: 1px solid var(--rule); padding-top: 16px; }
+.my-orders h3 { font-size: 15px; margin: 0 0 10px; color: var(--blue-deep); }
+.my-orders ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.my-order {
+  width: 100%; text-align: left; display: grid; gap: 2px; padding: 10px 12px; cursor: pointer;
+  border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper); font: inherit; color: var(--ink);
+}
+.my-order:hover, .my-order:focus-visible { border-color: var(--blue-mid); background: #fff; }
+.my-order span, .my-order small { font-size: 13px; color: var(--ink-soft); }
+
+.track-card .track-result { padding: 18px 0 0; }
+.track-card .my-orders { padding: 16px 0 0; }

@@ -16,11 +16,26 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
+// Solo estos sitios pueden llamar a la función desde el navegador.
+// Para cambiarlos sin tocar el código:
+//   supabase secrets set ALLOWED_ORIGINS="https://tu-dominio.com,https://otro.com"
+const DEFAULT_ORIGINS = ['https://andrescausil04.github.io'];
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || DEFAULT_ORIGINS.join(','))
+  .split(',').map((o) => o.trim().replace(/\/$/, '')).filter(Boolean);
+
+let corsHeaders: Record<string, string> = {};
+
+function buildCors(req: Request) {
+  const origin = (req.headers.get('Origin') || '').replace(/\/$/, '');
+  const allowed = ALLOWED_ORIGINS.includes(origin);
+  corsHeaders = {
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+    ...(allowed ? { 'Access-Control-Allow-Origin': origin } : {})
+  };
+  return { origin, allowed };
+}
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -29,12 +44,17 @@ function json(body, status = 200) {
   });
 }
 
+
 function clean(value, max) {
   return String(value || '').trim().slice(0, max);
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const cors = buildCors(req);
+  if (req.method === 'OPTIONS') {
+    return new Response(cors.allowed ? 'ok' : 'origen no permitido', { status: cors.allowed ? 200 : 403, headers: corsHeaders });
+  }
+  if (cors.origin && !cors.allowed) return json({ ok: false, error: 'Origen no permitido.' }, 403);
   if (req.method !== 'POST') return json({ ok: false, error: 'Método no permitido.' }, 405);
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -69,6 +89,7 @@ Deno.serve(async (req) => {
   if (profileError || !profile || !profile.active || profile.role !== 'admin') {
     return json({ ok: false, error: 'Solo el administrador puede crear cuentas.' }, 403);
   }
+
 
   // 2. Validar datos.
   let body;

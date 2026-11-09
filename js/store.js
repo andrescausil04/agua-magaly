@@ -48,10 +48,20 @@ window.MagalyStore = (function () {
     routes: 'magaly_routes',
     pqrs: 'magaly_pqrs',
     users: 'magaly_users',
-    settings: 'magaly_settings'
+    settings: 'magaly_settings',
+    stock: 'magaly_stock'
   };
 
-  const ENTITIES = ['products', 'orders', 'routes', 'pqrs', 'users', 'settings'];
+  const ENTITIES = ['products', 'orders', 'routes', 'pqrs', 'users', 'settings', 'stock'];
+
+  // Etiquetas de los movimientos de inventario.
+  const STOCK_LABEL = {
+    produccion: 'Producción',
+    ajuste: 'Ajuste de conteo',
+    venta: 'Venta entregada',
+    reverso: 'Entrega revertida',
+    inicial: 'Inventario inicial'
+  };
 
   // ==========================================================================
   // ESTADOS Y CATÁLOGOS
@@ -262,7 +272,9 @@ window.MagalyStore = (function () {
       ? raw.events
       : [{ type: 'creado', at: createdAt, by: 'Cliente (web)', note: '' }];
 
-    return {
+    // Se conservan los campos que no se normalizan (lines, routeId, source…)
+    // para no borrarlos al guardar el pedido desde un panel.
+    return Object.assign({}, raw, {
       id: raw.id || uid('ORD'),
       code: raw.code || raw.id || 'ORD',
       client: raw.client || 'Cliente',
@@ -283,7 +295,35 @@ window.MagalyStore = (function () {
       dataConsent: !!raw.dataConsent,
       dataConsentAt: raw.dataConsentAt || '',
       events: events
-    };
+    });
+  }
+
+  // Código corto y difícil de adivinar para seguir el pedido: AM-7K2Q9X
+  function newOrderCode() {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let out = '';
+    const bytes = new Uint8Array(6);
+    if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(bytes);
+    else for (let i = 0; i < 6; i++) bytes[i] = Math.floor(Math.random() * 256);
+    for (let i = 0; i < 6; i++) out += alphabet[bytes[i] % alphabet.length];
+    return 'AM-' + out;
+  }
+
+  // Convierte "2 × Paca 250 ml, 1 × Paca 3L" en líneas (pedidos antiguos sin `lines`).
+  function orderLines(order, products) {
+    if (order && Array.isArray(order.lines) && order.lines.length) {
+      return order.lines.map(l => ({
+        id: l.id, name: l.name || l.id, qty: Number(l.qty) || 0, price: Number(l.price) || 0
+      })).filter(l => l.qty > 0);
+    }
+    const list = products || [];
+    return String((order && order.items) || '').split(',').map(part => {
+      const m = part.trim().match(/^(\d+)\s*[×x*]\s*(.+)$/i);
+      if (!m) return null;
+      const name = m[2].trim();
+      const p = list.find(x => String(x.name || '').toLowerCase() === name.toLowerCase());
+      return { id: p ? p.id : name, name: name, qty: Number(m[1]), price: p ? Number(p.price) || 0 : 0 };
+    }).filter(Boolean);
   }
 
   function normalizeUser(raw) {
@@ -326,6 +366,40 @@ window.MagalyStore = (function () {
       status: raw.status || 'Programada',
       notes: raw.notes || ''
     };
+  }
+
+  // ==========================================================================
+  // INVENTARIO EN MODO LOCAL
+  // En la nube, el servidor descuenta el stock al entregar (mejoras-2026.sql).
+  // Sin nube se hace aquí para que la demostración funcione igual.
+  // ==========================================================================
+  function applyLocalStock(prev, next) {
+    const was = prev && prev.status === ORDER_STATUS.entregado;
+    const now = next && next.status === ORDER_STATUS.entregado;
+    if (was === now) return;
+    const sign = now ? -1 : 1;
+    const products = LocalAdapter.read(KEYS.products) || [];
+    const moves = LocalAdapter.read(KEYS.stock) || [];
+    let changed = false;
+    (Array.isArray(next.lines) ? next.lines : []).forEach(line => {
+      const p = products.find(x => x.id === line.id);
+      const qty = Number(line.qty) || 0;
+      if (!p || typeof p.stock !== 'number' || qty <= 0) return;
+      p.stock = p.stock + sign * qty;
+      changed = true;
+      const id = uid('MOV');
+      moves.unshift({
+        id: id, productId: p.id, qty: sign * qty,
+        type: sign < 0 ? 'venta' : 'reverso',
+        note: (sign < 0 ? 'Entrega ' : 'Se revirtió la entrega ') + (next.code || ''),
+        orderId: next.id, at: nowIso(), by: 'Sistema'
+      });
+    });
+    if (!changed) return;
+    LocalAdapter.write(KEYS.products, products);
+    LocalAdapter.write(KEYS.stock, moves.slice(0, 500));
+    notify('products');
+    notify('stock');
   }
 
   // ==========================================================================
@@ -456,6 +530,7 @@ window.MagalyStore = (function () {
     ensure(KEYS.routes, SEED.routes);
     ensure(KEYS.pqrs, SEED.pqrs);
     ensure(KEYS.settings, SEED.settings);
+    ensure(KEYS.stock, []);
 
     // Las cuentas de prueba SOLO se crean en modo local sin nube configurada.
     // Si Supabase está configurado, jamás se siembran credenciales conocidas.
@@ -554,6 +629,7 @@ window.MagalyStore = (function () {
     const rows = (data || []).map(r => r && r.data).filter(Boolean);
     if (entity === 'orders') return sortOrders(rows.map(normalizeOrder));
     if (entity === 'routes') return rows.map(normalizeRoute);
+    if (entity === 'stock') return rows.sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
     return rows;
   }
 
@@ -569,6 +645,7 @@ window.MagalyStore = (function () {
     if (entity === 'orders') return sortOrders(data.map(normalizeOrder));
     if (entity === 'users') return data.map(normalizeUser);
     if (entity === 'routes') return data.map(normalizeRoute);
+    if (entity === 'stock') return data.slice().sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
     return data;
   }
 
@@ -608,9 +685,11 @@ window.MagalyStore = (function () {
       }
       const items = await list(entity);
       const idx = items.findIndex(item => item.id === record.id);
+      const prev = idx >= 0 ? items[idx] : null;
       if (idx >= 0) items[idx] = Object.assign({}, items[idx], record);
       else items.unshift(record);
       await saveAll(entity, items);
+      if (entity === 'orders') applyLocalStock(prev, record);
       return record;
     }
 
@@ -1040,6 +1119,51 @@ window.MagalyStore = (function () {
     return { ok: true, id: user.id };
   }
 
+  // ==========================================================================
+  // SEGUIMIENTO PÚBLICO DEL PEDIDO
+  // ==========================================================================
+  async function trackOrder(code, phone) {
+    await ready();
+    const cleanCode = String(code || '').trim().toUpperCase();
+    const digits = String(phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanCode.length < 6 || digits.length !== 10) return null;
+
+    if (cloudActive) {
+      const { data, error } = await sb.rpc('track_order', { p_code: cleanCode, p_phone: digits });
+      if (error) throw error;
+      return data || null;
+    }
+
+    // Modo local: busca en los pedidos guardados en este navegador.
+    const local = (LocalAdapter.read(KEYS.orders) || []).map(normalizeOrder);
+    const o = local.find(x => String(x.code).toUpperCase() === cleanCode &&
+      String(x.phone || '').replace(/\D/g, '').slice(-10) === digits);
+    if (!o) return null;
+    return {
+      code: o.code, status: o.status, items: o.items, total: o.total, createdAt: o.createdAt,
+      driver: o.driverName ? o.driverName.split(' ')[0] : null,
+      events: (o.events || []).map(e => ({ type: e.type, at: e.at }))
+    };
+  }
+
+  // ==========================================================================
+  // INVENTARIO: movimientos manuales (producción y ajustes) del administrador
+  // ==========================================================================
+  async function addStockMove(product, qty, type, note, by) {
+    await ready();
+    const delta = Math.round(Number(qty) || 0);
+    if (!product || !delta) throw new Error('Escribe una cantidad válida.');
+    const base = typeof product.stock === 'number' ? product.stock : 0;
+    const updated = Object.assign({}, product, { stock: base + delta });
+    const move = {
+      id: uid('MOV'), productId: product.id, qty: delta, type: type || 'ajuste',
+      note: note || '', at: nowIso(), by: by || 'Administrador'
+    };
+    await upsert('products', updated);
+    await upsert('stock', move);
+    return updated;
+  }
+
   /**
    * Sube la imagen de un producto al almacenamiento de Supabase y devuelve su
    * enlace público. Sin nube la guarda como data URL (solo para pruebas).
@@ -1129,6 +1253,12 @@ window.MagalyStore = (function () {
     KEYS,
     ORDER_STATUS,
     EVENT_LABEL,
+    STOCK_LABEL,
+    trackOrder,
+    addStockMove,
+    newOrderCode,
+    orderLines,
+    hasSession,
     ready,
     list,
     saveAll,

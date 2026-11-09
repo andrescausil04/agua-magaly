@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; form-action 'self'; upgrade-insecure-requests">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="description" content="Consulta en qué va tu pedido de Agua Magaly con tu código y tu número de celular.">
+  <title>Seguir mi pedido — Agua Magaly</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="icon" type="image/png" href="assets/logo-magaly.png">
+  <link rel="stylesheet" href="css/styles.css?v=2026110902">
+</head>
+<body class="auth-page">
+
+  <main class="auth-card track-card">
+    <div class="auth-logo">
+      <a href="index.html" aria-label="Volver a la tienda de Agua Magaly">
+        <img src="assets/logo-magaly.png" alt="Logo Agua Magaly" width="72" height="72" style="object-fit: contain;">
+      </a>
+      <div class="brand">Agua Magaly</div>
+    </div>
+
+    <h2>Sigue tu pedido</h2>
+    <div class="sub">Escribe el código que aparece en tu mensaje de WhatsApp (por ejemplo <strong>AM-7K2Q9X</strong>) y el celular con el que pediste.</div>
+
+    <form id="track-form" class="track-form" novalidate>
+      <div class="form-row">
+        <label for="track-code">Código del pedido</label>
+        <input id="track-code" type="text" placeholder="AM-XXXXXX" autocomplete="off" autocapitalize="characters" maxlength="12" required>
+      </div>
+      <div class="form-row">
+        <label for="track-phone">Celular</label>
+        <input id="track-phone" type="tel" inputmode="numeric" placeholder="3001234567" maxlength="10" autocomplete="tel" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Consultar →</button>
+    </form>
+
+    <div id="track-error" class="track-error" role="alert" hidden></div>
+    <section id="track-result" class="track-result" aria-live="polite" hidden></section>
+
+    <section id="my-orders" class="my-orders" hidden>
+      <h3>Pedidos hechos desde este celular</h3>
+      <ul id="my-orders-list"></ul>
+      <button type="button" class="btn-text" id="my-orders-clear">Borrar esta lista del celular</button>
+    </section>
+
+    <div class="auth-note">
+      <a href="index.html#productos">← Volver a la tienda</a>
+      <p style="margin-top:10px;font-size:12px">Solo mostramos el estado, los productos y el total. Para proteger tus datos, necesitas el código y el celular.</p>
+    </div>
+  </main>
+
+  <script src="js/config.js?v=2026110902"></script>
+  <script src="js/store.js?v=2026110902"></script>
+  <script src="js/seguimiento.js?v=2026110902"></script>
+</body>
+</html>

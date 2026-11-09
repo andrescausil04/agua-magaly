@@ -25,8 +25,14 @@
     range: 'hoy',
     showCancelled: false,
     pqrsFilter: 'todas',
-    admin: null
+    admin: null,
+    stock: [],
+    reportRange: '7',
+    seenOrders: null,       // pedidos ya vistos (para avisar de los nuevos)
+    notifOn: false
   };
+
+  const NOTIF_KEY = 'magaly_admin_notif';
 
   // ==========================================================================
   // ARRANQUE
@@ -48,25 +54,32 @@
     bindAccountActions();
     bindTwofaGate();
     bindShortcuts();
+    bindReports();
+    bindNotifications();
 
     await maybeRequireTwofa();
     await reload();
-    setInterval(() => { store.list('orders').then(orders => { state.orders = orders; render(); }); }, 8000);
+    setInterval(() => {
+      store.list('orders').then(orders => { state.orders = orders; checkNewOrders(); render(); }).catch(() => {});
+    }, 8000);
   }
 
   async function reload() {
-    const [orders, products, users, routes, pqrs] = await Promise.all([
+    const [orders, products, users, routes, pqrs, stock] = await Promise.all([
       store.list('orders'),
       store.list('products'),
       store.list('users'),
       store.list('routes'),
-      store.list('pqrs')
+      store.list('pqrs'),
+      store.list('stock').catch(() => [])
     ]);
     state.orders = orders;
     state.products = products;
     state.users = users;
     state.routes = routes;
     state.pqrs = pqrs;
+    state.stock = stock;
+    checkNewOrders();
     render();
   }
 
@@ -82,6 +95,9 @@
     renderRoutes();
     renderPqrs();
     renderAccount();
+    renderReports();
+    renderInventory();
+    renderStockAlert();
   }
 
   // ==========================================================================
@@ -118,6 +134,7 @@
     setCount('count-products', state.products.length);
     setCount('count-routes', state.routes.length);
     setCount('count-pqrs', state.pqrs.filter(p => p.status !== 'Atendida').length, true);
+    setCount('count-inventory', lowStock().length, true);
   }
 
   function setCount(id, value, alert) {
@@ -507,6 +524,10 @@
     const options = ['<option value="">Sin asignar</option>']
       .concat(drivers.map(d => '<option value="' + ui.esc(d.id) + '"' + (o.driverId === d.id ? ' selected' : '') + '>' + ui.esc(d.name) + '</option>'))
       .join('');
+    const routeOptions = ['<option value="">Sin ruta</option>']
+      .concat(state.routes.map(r => '<option value="' + ui.esc(r.id) + '"' + (o.routeId === r.id ? ' selected' : '') + '>' + ui.esc(r.name) + (r.time ? ' · ' + ui.esc(r.time) : '') + '</option>'))
+      .join('');
+    const lines = store.orderLines(o, state.products);
 
     const timeline = (o.events || []).slice().sort((a, b) => new Date(a.at) - new Date(b.at));
     const timelineHtml = timeline.map(ev =>
@@ -553,12 +574,18 @@
 
         '<div class="detail-block">' +
           '<h4>Pedido</h4>' +
-          '<ul class="detail-items">' + String(o.items || '').split(',').filter(Boolean).map(i => '<li>' + ui.esc(i.trim()) + '</li>').join('') + '</ul>' +
+          '<ul class="detail-items">' + (lines.length
+            ? lines.map(l => '<li>' + ui.esc(l.qty + ' × ' + l.name) + (l.price ? ' <small>(' + U.formatMoney(l.qty * l.price) + ')</small>' : '') + '</li>').join('')
+            : String(o.items || '').split(',').filter(Boolean).map(i => '<li>' + ui.esc(i.trim()) + '</li>').join('')) + '</ul>' +
+          (o.source === 'web' ? '<div class="hint" style="margin-top:6px">✓ Total calculado por el servidor con los precios del catálogo.</div>' : '') +
           '<div class="detail-total"><span>Total</span><span>' + U.formatMoney(o.total) + '</span></div>' +
         '</div>' +
 
         '<div class="detail-block">' +
-          '<h4>Repartidor asignado</h4>' +
+          '<h4>Ruta y repartidor</h4>' +
+          '<label class="drawer-label" for="drawer-route">Ruta</label>' +
+          '<select id="drawer-route" style="width:100%;padding:10px 12px;border:1px solid var(--rule);border-radius:9px;font-family:inherit;font-size:14px;margin-bottom:8px">' + routeOptions + '</select>' +
+          '<label class="drawer-label" for="drawer-driver">Repartidor</label>' +
           '<select id="drawer-driver" style="width:100%;padding:10px 12px;border:1px solid var(--rule);border-radius:9px;font-family:inherit;font-size:14px">' + options + '</select>' +
           '<button type="button" class="btn btn-primary btn-sm" id="drawer-assign" style="width:100%;margin-top:9px">Guardar asignación</button>' +
         '</div>' +
@@ -585,15 +612,26 @@
 
     drawer.querySelector('[data-close-drawer]').addEventListener('click', ui.closeDrawer);
 
+    // Al elegir una ruta se propone su repartidor.
+    const routeSelect = drawer.querySelector('#drawer-route');
+    const driverSelect = drawer.querySelector('#drawer-driver');
+    routeSelect.addEventListener('change', () => {
+      const r = state.routes.find(x => x.id === routeSelect.value);
+      if (r && r.driverId && drivers.some(d => d.id === r.driverId)) driverSelect.value = r.driverId;
+    });
+
     drawer.querySelector('#drawer-assign').addEventListener('click', async () => {
-      const driverId = drawer.querySelector('#drawer-driver').value || null;
+      const driverId = driverSelect.value || null;
       const driver = driverId ? driverById(driverId) : null;
-      const events = (o.events || []).concat([{
-        type: 'asignado', at: U.nowIso(), by: state.admin.name,
-        note: driver ? 'Asignado a ' + driver.name : 'Se quitó el repartidor'
-      }]);
-      await store.upsert('orders', Object.assign({}, o, { driverId: driverId, driverName: driver ? driver.name : '', events: events }));
-      ui.toast(driver ? 'Asignado a ' + driver.name : 'Pedido sin asignar', 'success');
+      const route = state.routes.find(x => x.id === routeSelect.value) || null;
+      const note = [route ? 'Ruta: ' + route.name : '', driver ? 'Asignado a ' + driver.name : 'Sin repartidor'].filter(Boolean).join(' · ');
+      const events = (o.events || []).concat([{ type: 'asignado', at: U.nowIso(), by: state.admin.name, note: note }]);
+      await store.upsert('orders', Object.assign({}, o, {
+        driverId: driverId, driverName: driver ? driver.name : '',
+        routeId: route ? route.id : null, routeName: route ? route.name : '',
+        events: events
+      }));
+      ui.toast(driver ? 'Asignado a ' + driver.name + (route ? ' · ' + route.name : '') : 'Pedido sin asignar', 'success');
       ui.closeDrawer();
       await reload();
     });
@@ -718,7 +756,7 @@
           U.formatMoney(p.price) + ' ' + ui.esc(p.unit || '') +
         '</small></span>' +
         '<input type="number" class="order-line-qty" min="0" step="1" inputmode="numeric" value="0"' +
-          ' data-price="' + Number(p.price) + '" data-name="' + ui.esc(p.name) + '"' +
+          ' data-price="' + Number(p.price) + '" data-name="' + ui.esc(p.name) + '" data-id="' + ui.esc(p.id) + '"' +
           ' aria-label="Cantidad de ' + ui.esc(p.name) + '">' +
       '</label>'
     ).join('');
@@ -761,9 +799,16 @@
         const driverId = form.querySelector('#f-driver').value || null;
         const driver = driverId ? driverById(driverId) : null;
         const now = U.nowIso();
+        const code = store.newOrderCode();
+        const lines = [];
+        form.querySelectorAll('.order-line-qty').forEach(input => {
+          const qty = Math.max(0, Math.floor(Number(input.value) || 0));
+          if (qty > 0) lines.push({ id: input.dataset.id, name: input.dataset.name, qty: qty, price: Number(input.dataset.price) || 0 });
+        });
         const order = {
-          id: store.uid('ORD'),
-          code: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
+          id: code,
+          code: code,
+          lines: lines,
           client: form.querySelector('#f-client').value.trim(),
           phone: form.querySelector('#f-phone').value.trim(),
           address: form.querySelector('#f-address').value.trim(),
@@ -837,6 +882,15 @@
           { value: 'false', label: 'Agotado / Inactivo', selected: p.active === false }
         ]
       }) +
+      field('f-stock-track', 'Controlar inventario', {
+        type: 'select',
+        options: [
+          { value: 'si', label: 'Sí, llevar el stock', selected: typeof p.stock === 'number' },
+          { value: 'no', label: 'No', selected: typeof p.stock !== 'number' }
+        ]
+      }) +
+      field('f-min', 'Stock mínimo (alerta)', { type: 'number', min: 0, step: 1, value: p.minStock !== undefined ? p.minStock : 10 }) +
+      (product ? '' : field('f-stock', 'Stock inicial', { type: 'number', min: 0, step: 1, value: 0, hint: 'Después se ajusta en Inventario.' })) +
       field('f-desc', 'Descripción', { type: 'textarea', rows: 3, full: true, value: p.desc || '' }) +
       '<div class="form-field full">' +
         '<label for="f-image-choose">Imagen del producto</label>' +
@@ -884,8 +938,13 @@
           return false;
         }
 
-        const record = {
+        const track = form.querySelector('#f-stock-track').value === 'si';
+        const stockInput = form.querySelector('#f-stock');
+        const initialStock = stockInput ? Math.max(0, Math.floor(Number(stockInput.value) || 0)) : 0;
+        // Se conservan los campos existentes (por ejemplo, el stock actual).
+        const record = Object.assign({}, product || {}, {
           id: product ? product.id : 'prod_' + Date.now(),
+          minStock: Math.max(0, Math.floor(Number(form.querySelector('#f-min').value) || 0)),
           name: form.querySelector('#f-name').value.trim(),
           price: Number(form.querySelector('#f-price').value || 0),
           unit: form.querySelector('#f-unit').value.trim(),
@@ -893,7 +952,9 @@
           active: form.querySelector('#f-status').value === 'true',
           desc: form.querySelector('#f-desc').value.trim(),
           image: image || 'assets/bolsa-250ml.jpg'
-        };
+        });
+        if (track && typeof record.stock !== 'number') record.stock = initialStock;
+        if (!track) delete record.stock;
 
         try {
           await store.upsert('products', record);
@@ -2060,6 +2121,348 @@
   }
 
   // ==========================================================================
+  // REPORTES
+  // ==========================================================================
+  function bindReports() {
+    document.querySelectorAll('#report-range button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#report-range button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.reportRange = btn.dataset.range;
+        renderReports();
+      });
+    });
+    document.getElementById('btn-export-report').addEventListener('click', () => {
+      const rows = [];
+      reportOrders().filter(o => o.status === STATUS.entregado).forEach(o => {
+        store.orderLines(o, state.products).forEach(l => rows.push({
+          fecha: U.formatDateTime(o.createdAt), codigo: o.code, cliente: o.client,
+          producto: l.name, cantidad: l.qty, precio: l.price, subtotal: l.qty * l.price,
+          total_pedido: o.total, ruta: o.routeName || '', repartidor: driverName(o) || '',
+          pago: o.payment || '', cobrado: o.paid ? 'Sí' : 'No'
+        }));
+      });
+      if (!rows.length) { ui.toast('No hay ventas entregadas en este periodo', 'warn'); return; }
+      store.exportCsv('ventas', rows);
+      ui.toast('Archivo de ventas descargado', 'success');
+    });
+  }
+
+  function reportStart() {
+    const now = new Date();
+    if (state.reportRange === 'todo') return null;
+    if (state.reportRange === 'mes') return new Date(now.getFullYear(), now.getMonth(), 1);
+    const days = Number(state.reportRange) || 7;
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - (days - 1));
+    return d;
+  }
+
+  function reportOrders() {
+    const start = reportStart();
+    return state.orders.filter(o => !start || new Date(o.createdAt) >= start);
+  }
+
+  // Barras horizontales simples (sin librerías).
+  function bars(rows, opts) {
+    const o = opts || {};
+    if (!rows.length) return ui.emptyState(o.empty || 'Sin datos en este periodo', '', '📭');
+    const max = Math.max.apply(null, rows.map(r => r.value).concat([1]));
+    return '<ul class="report-bars">' + rows.map(r =>
+      '<li><div class="report-bar-label"><span>' + ui.esc(r.label) + '</span><b>' + ui.esc(r.display) + '</b></div>' +
+      '<div class="report-bar"><span style="width:' + Math.max(2, Math.round((r.value / max) * 100)) + '%"></span></div>' +
+      (r.sub ? '<small>' + ui.esc(r.sub) + '</small>' : '') + '</li>'
+    ).join('') + '</ul>';
+  }
+
+  function renderReports() {
+    const kpiBox = document.getElementById('report-kpis');
+    if (!kpiBox) return;
+    const list = reportOrders();
+    const delivered = list.filter(o => o.status === STATUS.entregado);
+    const cancelled = list.filter(o => o.status === STATUS.cancelado);
+    const sales = delivered.reduce((s, o) => s + o.total, 0);
+    const unpaid = delivered.filter(o => !o.paid);
+    const closed = delivered.length + cancelled.length;
+    const units = delivered.reduce((s, o) => s + store.orderLines(o, state.products).reduce((a, l) => a + l.qty, 0), 0);
+
+    const cards = [
+      { label: 'Ventas entregadas', value: U.formatMoney(sales), hint: delivered.length + ' pedido(s)', cls: 'kpi-money' },
+      { label: 'Pacas vendidas', value: units, hint: 'En pedidos entregados', cls: '' },
+      { label: 'Pedidos recibidos', value: list.length, hint: cancelled.length + ' cancelado(s)', cls: '' },
+      { label: 'Tasa de entrega', value: closed ? Math.round((delivered.length / closed) * 100) + '%' : '—', hint: 'Entregados vs. cerrados', cls: 'kpi-route' },
+      { label: 'Ticket promedio', value: U.formatMoney(delivered.length ? Math.round(sales / delivered.length) : 0), hint: 'Por pedido entregado', cls: '' },
+      { label: 'Por cobrar', value: U.formatMoney(unpaid.reduce((s, o) => s + o.total, 0)), hint: unpaid.length + ' entrega(s) sin cobrar', cls: unpaid.length ? 'kpi-danger' : '' }
+    ];
+    kpiBox.innerHTML = cards.map(c =>
+      '<div class="kpi-card ' + c.cls + '"><span class="kpi-label">' + ui.esc(c.label) + '</span>' +
+      '<span class="kpi-value">' + ui.esc(c.value) + '</span><span class="kpi-hint">' + ui.esc(c.hint) + '</span></div>'
+    ).join('');
+    document.getElementById('report-total').textContent = U.formatMoney(sales);
+
+    // Ventas por día (columnas)
+    const start = reportStart() || (delivered.length ? new Date(Math.min.apply(null, delivered.map(o => new Date(o.createdAt).getTime()))) : new Date());
+    const days = [];
+    const cursor = new Date(start); cursor.setHours(0, 0, 0, 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    while (cursor <= today && days.length < 62) {
+      const iso = cursor.toISOString();
+      const value = delivered.filter(o => U.sameDay(o.createdAt, iso)).reduce((s, o) => s + o.total, 0);
+      days.push({ date: new Date(cursor), value: value });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    const maxDay = Math.max.apply(null, days.map(d => d.value).concat([1]));
+    document.getElementById('report-days').innerHTML = days.length
+      ? '<div class="report-cols" style="--cols:' + days.length + '">' + days.map(d =>
+          '<div class="report-col" title="' + ui.esc(d.date.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' }) + ': ' + U.formatMoney(d.value)) + '">' +
+            '<span class="report-col-bar" style="height:' + Math.max(2, Math.round((d.value / maxDay) * 100)) + '%"></span>' +
+            '<small>' + (days.length <= 14 ? ui.esc(d.date.toLocaleDateString('es-CO', { weekday: 'short' }).slice(0, 3)) : d.date.getDate()) + '</small>' +
+          '</div>').join('') + '</div>'
+      : ui.emptyState('Sin ventas', '', '📭');
+
+    // Por producto
+    const byProduct = {};
+    delivered.forEach(o => store.orderLines(o, state.products).forEach(l => {
+      const k = l.name;
+      byProduct[k] = byProduct[k] || { qty: 0, money: 0 };
+      byProduct[k].qty += l.qty;
+      byProduct[k].money += l.qty * l.price;
+    }));
+    document.getElementById('report-products').innerHTML = bars(Object.keys(byProduct)
+      .map(k => ({ label: k, value: byProduct[k].qty, display: byProduct[k].qty + (byProduct[k].qty === 1 ? ' paca' : ' pacas'), sub: U.formatMoney(byProduct[k].money) }))
+      .sort((a, b) => b.value - a.value));
+
+    // Por ruta
+    const byRoute = {};
+    delivered.forEach(o => {
+      const k = o.routeName || 'Sin ruta asignada';
+      byRoute[k] = byRoute[k] || { n: 0, money: 0 };
+      byRoute[k].n += 1;
+      byRoute[k].money += o.total;
+    });
+    document.getElementById('report-routes').innerHTML = bars(Object.keys(byRoute)
+      .map(k => ({ label: k, value: byRoute[k].money, display: U.formatMoney(byRoute[k].money), sub: byRoute[k].n + ' entrega(s)' }))
+      .sort((a, b) => b.value - a.value));
+
+    // Por repartidor
+    const byDriver = {};
+    delivered.forEach(o => {
+      const k = driverName(o) || 'Sin repartidor';
+      byDriver[k] = byDriver[k] || { n: 0, money: 0, unpaid: 0 };
+      byDriver[k].n += 1;
+      byDriver[k].money += o.total;
+      if (!o.paid) byDriver[k].unpaid += o.total;
+    });
+    document.getElementById('report-drivers').innerHTML = bars(Object.keys(byDriver)
+      .map(k => ({ label: k, value: byDriver[k].n, display: byDriver[k].n + (byDriver[k].n === 1 ? ' entrega' : ' entregas'),
+        sub: U.formatMoney(byDriver[k].money) + (byDriver[k].unpaid ? ' · por cobrar ' + U.formatMoney(byDriver[k].unpaid) : '') }))
+      .sort((a, b) => b.value - a.value));
+
+    // Horas pico (todos los pedidos recibidos)
+    const hours = new Array(24).fill(0);
+    list.forEach(o => { const h = new Date(o.createdAt).getHours(); if (!isNaN(h)) hours[h] += 1; });
+    const hourRows = hours.map((n, h) => ({ h: h, n: n })).filter(x => x.n > 0)
+      .map(x => ({ label: String(x.h).padStart(2, '0') + ':00 – ' + String(x.h).padStart(2, '0') + ':59', value: x.n, display: x.n + ' pedido(s)' }));
+    document.getElementById('report-hours').innerHTML = bars(hourRows, { empty: 'Aún no hay pedidos en este periodo' });
+  }
+
+  // ==========================================================================
+  // INVENTARIO
+  // ==========================================================================
+  function tracked(p) { return typeof p.stock === 'number'; }
+
+  function lowStock() {
+    return state.products.filter(p => tracked(p) && p.stock <= (Number(p.minStock) || 0));
+  }
+
+  function soldLast30(p) {
+    const limit = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return state.orders
+      .filter(o => o.status === STATUS.entregado && new Date(o.createdAt).getTime() >= limit)
+      .reduce((s, o) => s + store.orderLines(o, state.products).filter(l => l.id === p.id).reduce((a, l) => a + l.qty, 0), 0);
+  }
+
+  function renderStockAlert() {
+    const box = document.getElementById('stock-alert');
+    if (!box) return;
+    const low = lowStock();
+    if (!low.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = '⚠️ <strong>Inventario bajo:</strong> ' +
+      low.map(p => ui.esc(p.name) + ' (' + p.stock + ')').join(', ') +
+      ' <button type="button" class="btn-text" data-goto-inv>Ver inventario →</button>';
+    box.querySelector('[data-goto-inv]').addEventListener('click', () => goto('inventario'));
+  }
+
+  function renderInventory() {
+    const body = document.getElementById('inventory-body');
+    if (!body) return;
+    if (!state.products.length) {
+      body.innerHTML = '<tr><td colspan="7">' + ui.emptyState('Sin productos', 'Créalos en la sección Productos.', '📦') + '</td></tr>';
+    } else {
+      body.innerHTML = state.products.map((p, i) => {
+        if (!tracked(p)) {
+          return '<tr><td><strong>' + ui.esc(p.name) + '</strong></td><td colspan="5" class="muted">Sin control de inventario</td>' +
+            '<td style="text-align:right"><button type="button" class="btn btn-ghost btn-sm" data-inv-track="' + i + '" style="color:var(--blue-deep);border-color:var(--rule)">Activar control</button></td></tr>';
+        }
+        const min = Number(p.minStock) || 0;
+        const sold = soldLast30(p);
+        const perDay = sold / 30;
+        const daysLeft = perDay > 0 ? Math.floor(p.stock / perDay) : null;
+        const statusPill = p.stock <= 0 ? '<span class="pill pill-cancelado">● Agotado</span>'
+          : p.stock <= min ? '<span class="pill pill-pendiente">● Bajo</span>'
+          : '<span class="pill pill-entregado">● Bien</span>';
+        return '<tr>' +
+          '<td><strong>' + ui.esc(p.name) + '</strong></td>' +
+          '<td style="text-align:right;font-weight:700">' + p.stock + '</td>' +
+          '<td style="text-align:right">' + min + '</td>' +
+          '<td>' + statusPill + '</td>' +
+          '<td style="text-align:right">' + sold + '</td>' +
+          '<td style="text-align:right">' + (daysLeft === null ? '—' : daysLeft + ' día(s)') + '</td>' +
+          '<td style="text-align:right;white-space:nowrap">' +
+            '<button type="button" class="btn btn-primary btn-sm" data-inv-add="' + i + '">＋ Producción</button> ' +
+            '<button type="button" class="btn btn-ghost btn-sm" data-inv-count="' + i + '" style="color:var(--blue-deep);border-color:var(--rule)">Conteo</button>' +
+          '</td></tr>';
+      }).join('');
+    }
+
+    body.querySelectorAll('[data-inv-track]').forEach(btn => btn.addEventListener('click', async () => {
+      const p = state.products[Number(btn.dataset.invTrack)];
+      await store.upsert('products', Object.assign({}, p, { stock: 0, minStock: p.minStock !== undefined ? p.minStock : 10 }));
+      await reload();
+      ui.toast('Control de inventario activado para ' + p.name + '. Registra la producción.', 'success');
+    }));
+    body.querySelectorAll('[data-inv-add]').forEach(btn => btn.addEventListener('click', () => openStockForm(state.products[Number(btn.dataset.invAdd)], 'produccion')));
+    body.querySelectorAll('[data-inv-count]').forEach(btn => btn.addEventListener('click', () => openStockForm(state.products[Number(btn.dataset.invCount)], 'ajuste')));
+
+    const movesBody = document.getElementById('stock-moves-body');
+    const moves = (state.stock || []).slice(0, 40);
+    movesBody.innerHTML = moves.length ? moves.map(m => {
+      const p = state.products.find(x => x.id === m.productId);
+      const qty = Number(m.qty) || 0;
+      return '<tr><td>' + ui.esc(U.formatDateTime(m.at)) + '</td>' +
+        '<td>' + ui.esc(p ? p.name : m.productId) + '</td>' +
+        '<td>' + ui.esc(store.STOCK_LABEL[m.type] || m.type) + '</td>' +
+        '<td style="text-align:right;font-weight:700;color:' + (qty < 0 ? '#9B2C2C' : '#1E824C') + '">' + (qty > 0 ? '+' : '') + qty + '</td>' +
+        '<td>' + ui.esc(m.note || '') + '</td><td>' + ui.esc(m.by || '') + '</td></tr>';
+    }).join('') : '<tr><td colspan="6">' + ui.emptyState('Sin movimientos todavía', '', '🧾') + '</td></tr>';
+  }
+
+  function openStockForm(product, type) {
+    const isCount = type === 'ajuste';
+    const body = '<div class="form-grid">' +
+      '<div class="form-field full"><span class="hint">Stock actual de <strong>' + ui.esc(product.name) + '</strong>: ' + product.stock + ' pacas</span></div>' +
+      field('f-qty', isCount ? 'Pacas contadas en bodega *' : 'Pacas producidas *', { required: true, type: 'number', min: 0, step: 1, full: true }) +
+      field('f-note', 'Nota', { full: true, placeholder: isCount ? 'Ej. Conteo del viernes' : 'Ej. Producción de la mañana' }) +
+    '</div>';
+    openModal({
+      title: isCount ? 'Ajustar con un conteo' : 'Registrar producción',
+      subtitle: isCount ? 'Escribe cuántas pacas hay de verdad; se registra la diferencia.' : 'Suma las pacas que salieron de la planta.',
+      submitLabel: 'Guardar',
+      body: body,
+      onSubmit: async form => {
+        const value = Math.floor(Number(form.querySelector('#f-qty').value));
+        if (!(value >= 0)) { ui.toast('Escribe una cantidad válida', 'error'); return false; }
+        const delta = isCount ? value - product.stock : value;
+        if (!delta) { ui.toast(isCount ? 'El conteo coincide con el stock' : 'Escribe una cantidad mayor que cero', 'warn'); return !isCount ? false : true; }
+        try {
+          await store.addStockMove(product, delta, type, form.querySelector('#f-note').value.trim(), state.admin.name);
+        } catch (err) {
+          ui.toast('No se pudo guardar: ' + (err.message || err), 'error');
+          return false;
+        }
+        await reload();
+        ui.toast((delta > 0 ? '+' : '') + delta + ' pacas · ' + product.name, 'success');
+        return true;
+      }
+    });
+  }
+
+  // ==========================================================================
+  // AVISO DE PEDIDOS NUEVOS (sonido + notificación del navegador)
+  // ==========================================================================
+  function bindNotifications() {
+    const btn = document.getElementById('btn-notif');
+    try { state.notifOn = localStorage.getItem(NOTIF_KEY) === '1'; } catch (err) { state.notifOn = false; }
+    const paint = () => {
+      if (!btn) return;
+      btn.textContent = state.notifOn ? '🔔 Avisos activos' : '🔕 Activar avisos';
+      btn.classList.toggle('is-on', state.notifOn);
+    };
+    paint();
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      state.notifOn = !state.notifOn;
+      if (state.notifOn && typeof window.Notification !== 'undefined' && window.Notification.permission === 'default') {
+        try { await window.Notification.requestPermission(); } catch (err) { /* ignora */ }
+      }
+      try { localStorage.setItem(NOTIF_KEY, state.notifOn ? '1' : '0'); } catch (err) { /* ignora */ }
+      paint();
+      if (state.notifOn) { chime(); ui.toast('Te avisaremos con sonido cuando llegue un pedido nuevo.', 'success'); }
+      else ui.toast('Avisos desactivados', 'warn');
+    });
+  }
+
+  function checkNewOrders() {
+    const ids = state.orders.filter(o => o.status === STATUS.pendiente).map(o => o.id);
+    if (!state.seenOrders) { state.seenOrders = new Set(ids); return; }
+    const fresh = state.orders.filter(o => o.status === STATUS.pendiente && !state.seenOrders.has(o.id));
+    ids.forEach(id => state.seenOrders.add(id));
+    if (!fresh.length) return;
+    const first = fresh[0];
+    const extra = fresh.length > 1 ? ' (+' + (fresh.length - 1) + ' más)' : '';
+    ui.toast('🧾 Pedido nuevo: ' + first.client + ' · ' + U.formatMoney(first.total) + extra, 'success');
+    if (!state.notifOn) return;
+    chime();
+    flashTitle();
+    if (typeof window.Notification !== 'undefined' && window.Notification.permission === 'granted') {
+      try {
+        const n = new window.Notification('Pedido nuevo · Agua Magaly', {
+          body: first.client + ' · ' + U.formatMoney(first.total) + ' · ' + (first.items || ''),
+          icon: 'assets/logo-magaly.png',
+          tag: 'magaly-admin-' + first.id
+        });
+        n.onclick = () => { window.focus(); goto('pedidos'); n.close(); };
+      } catch (err) { /* algunos navegadores lo bloquean */ }
+    }
+  }
+
+  function chime() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+      const now = ctx.currentTime;
+      [0, 0.16, 0.32].forEach((offset, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = [784, 988, 1319][i];
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.25, now + offset + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.18);
+      });
+      setTimeout(() => { try { ctx.close(); } catch (err) { /* ignora */ } }, 1000);
+    } catch (err) { /* sin sonido */ }
+  }
+
+  function flashTitle() {
+    if (!document.hidden) return;
+    const original = document.title;
+    let on = false;
+    const timer = setInterval(() => { document.title = on ? '🧾 Pedido nuevo' : original; on = !on; }, 900);
+    const stop = () => { clearInterval(timer); document.title = original; document.removeEventListener('visibilitychange', stop); };
+    document.addEventListener('visibilitychange', stop);
+    setTimeout(stop, 30000);
+  }
+
+  // ==========================================================================
   // ATAJOS DE TECLADO
   // ==========================================================================
   function bindShortcuts() {
@@ -2086,7 +2489,7 @@
   // ==========================================================================
   store.subscribe(ui.debounce(async entity => {
     if (!state.admin) return;
-    if (['orders', 'products', 'users', 'routes', 'pqrs'].indexOf(entity) >= 0) await reload();
+    if (['orders', 'products', 'users', 'routes', 'pqrs', 'stock'].indexOf(entity) >= 0) await reload();
   }, 350));
 
   window.addEventListener('resize', ui.debounce(renderChart, 200));

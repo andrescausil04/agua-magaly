@@ -309,6 +309,11 @@ aviso.
 
 ## 6. Lista de verificación final
 
+> Después de esta lista, sigue con **`database/MEJORAS-2026.md`** (total
+> calculado en el servidor, anti-spam, seguimiento, reportes e inventario).
+> No vuelvas a ejecutar `security-hardening.sql` después de
+> `mejoras-2026.sql`: revertiría esas protecciones.
+
 - [ ] Ejecuté `database/security-hardening.sql` sin errores.
 - [ ] Probé el panel de administrador.
 - [ ] Probé el panel de repartidor con un pedido asignado.

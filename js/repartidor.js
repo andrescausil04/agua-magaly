@@ -20,8 +20,122 @@
     view: 'pedidos',
     range: 'activos',
     seenReady: false,   // en la primera carga no avisamos de lo que ya existía
-    seen: new Set()     // pedidos que el repartidor ya conoce
+    seen: new Set(),    // pedidos que el repartidor ya conoce
+    offline: false
   };
+
+  // --------------------------------------------------------------------------
+  // Sin señal: copia local de los pedidos y cola de cambios por enviar
+  // --------------------------------------------------------------------------
+  function cacheKey() { return 'magaly_driver_cache_' + state.driver.id; }
+  function outboxKey() { return 'magaly_outbox_' + state.driver.id; }
+
+  function readLocal(key, fallback) {
+    try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (err) { return fallback; }
+  }
+  function writeLocal(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (err) { /* sin espacio */ }
+  }
+
+  function isNetworkError(err) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+    return /failed to fetch|network|load failed|fetch|timeout|offline/i.test(String((err && err.message) || err || ''));
+  }
+
+  function outbox() { return readLocal(outboxKey(), []); }
+
+  function queueChange(order) {
+    const list = outbox().filter(item => item.id !== order.id);
+    list.push({ id: order.id, record: order, at: Date.now() });
+    writeLocal(outboxKey(), list);
+  }
+
+  // Guarda el cambio; si no hay señal, lo deja en cola y lo envía después.
+  async function saveOrder(order) {
+    try {
+      await store.update('orders', order.id, order);
+      return 'ok';
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+      queueChange(order);
+      state.orders = state.orders.map(o => (o.id === order.id ? order : o));
+      state.offline = true;
+      render();
+      return 'queued';
+    }
+  }
+
+  let flushing = false;
+  async function flushOutbox() {
+    if (flushing) return;
+    const list = outbox();
+    if (!list.length) return;
+    flushing = true;
+    const remaining = [];
+    let sent = 0;
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      try {
+        await store.update('orders', item.id, item.record);
+        sent++;
+      } catch (err) {
+        if (isNetworkError(err)) { remaining.push.apply(remaining, list.slice(i)); break; }
+        ui.toast('No se pudo enviar el cambio del pedido ' + (item.record.code || item.id) + ': ' + (err.message || err), 'error');
+      }
+    }
+    writeLocal(outboxKey(), remaining);
+    flushing = false;
+    if (sent) ui.toast('Se enviaron ' + sent + ' cambio(s) guardado(s) sin señal', 'success');
+    renderOffline();
+  }
+
+  function renderOffline() {
+    const banner = document.getElementById('offline-banner');
+    if (!banner) return;
+    const pending = outbox().length;
+    if (!state.offline && !pending) { banner.hidden = true; return; }
+    banner.hidden = false;
+    banner.textContent = state.offline
+      ? '📵 Sin conexión. Estás viendo la última copia de tus pedidos' + (pending ? ' · ' + pending + ' cambio(s) por enviar' : '') + '.'
+      : '⏳ Enviando ' + pending + ' cambio(s) guardado(s) sin señal…';
+  }
+
+  // --------------------------------------------------------------------------
+  // App instalable (PWA)
+  // --------------------------------------------------------------------------
+  let installEvent = null;
+
+  function setupInstall() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(err => console.warn('[pwa] sin service worker', err));
+    }
+    const card = document.getElementById('install-card');
+    const btn = document.getElementById('install-btn');
+    const hint = document.getElementById('install-hint');
+    if (!card || !btn || !hint) return;
+    const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
+    if (standalone) return;
+    const ios = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    if (ios) {
+      card.hidden = false;
+      hint.textContent = 'En iPhone: abre esta página en Safari, toca el botón Compartir y elige "Agregar a inicio".';
+    }
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      installEvent = e;
+      card.hidden = false;
+      btn.hidden = false;
+      hint.textContent = 'Queda como una app en tu pantalla de inicio y abre más rápido.';
+    });
+    btn.addEventListener('click', async () => {
+      if (!installEvent) return;
+      installEvent.prompt();
+      try { await installEvent.userChoice; } catch (err) { /* ignora */ }
+      installEvent = null;
+      btn.hidden = true;
+    });
+    window.addEventListener('appinstalled', () => { card.hidden = true; ui.toast('App instalada', 'success'); });
+  }
 
   // --------------------------------------------------------------------------
   // Consentimiento de ubicación
@@ -106,6 +220,9 @@
     bindPasswordForm();
     bindNotifications();
     bindGeoConsent();
+    setupInstall();
+    window.addEventListener('online', () => { state.offline = false; flushOutbox().then(reload); });
+    window.addEventListener('offline', () => { state.offline = true; renderOffline(); });
     await reload();
 
     setInterval(reload, 10000);
@@ -113,13 +230,29 @@
   }
 
   async function reload() {
-    const orders = await store.list('orders');
-    state.orders = orders.filter(o => o.driverId === state.driver.id);
+    let orders;
+    try {
+      if (outbox().length && navigator.onLine !== false) await flushOutbox();
+      orders = (await store.list('orders')).filter(o => o.driverId === state.driver.id);
+      state.offline = false;
+      writeLocal(cacheKey(), orders);
+    } catch (err) {
+      if (!isNetworkError(err)) console.warn('[repartidor] no se pudieron cargar los pedidos', err);
+      state.offline = true;
+      orders = readLocal(cacheKey(), state.orders || []);
+    }
+    // Los cambios aún sin enviar se muestran como ya hechos.
+    const pending = outbox();
+    state.orders = orders.map(o => {
+      const q = pending.find(item => item.id === o.id);
+      return q ? q.record : o;
+    });
     checkNewOrders();
     render();
   }
 
   function render() {
+    renderOffline();
     renderSummary();
     renderRoute();
     renderJobs();
@@ -455,7 +588,7 @@
     ui.toast('Registrando salida a ruta…');
     const geo = await withGeo();
 
-    await store.update('orders', order.id, Object.assign({}, order, {
+    const startResult = await saveOrder(Object.assign({}, order, {
       status: STATUS.enruta,
       events: (order.events || []).concat([{
         type: 'en_ruta',
@@ -466,6 +599,7 @@
       }])
     }));
 
+    if (startResult === 'queued') { ui.toast('Sin señal: la salida quedó guardada y se enviará al volver la conexión', 'warn'); return; }
     await reload();
     ui.toast('¡Buen viaje! Pedido ' + order.code + ' en ruta', 'success');
   }
@@ -479,7 +613,7 @@
 
     const geo = await withGeo();
 
-    await store.update('orders', order.id, Object.assign({}, order, {
+    const doneResult = await saveOrder(Object.assign({}, order, {
       status: STATUS.entregado,
       paid: result.paid,
       payment: result.payment,
@@ -492,6 +626,7 @@
       }])
     }));
 
+    if (doneResult === 'queued') { ui.toast('Sin señal: la entrega quedó guardada y se enviará al volver la conexión', 'warn'); return; }
     await reload();
     ui.toast('Entrega registrada · ' + order.code, 'success');
   }
@@ -509,7 +644,7 @@
     });
     if (!reason) return;
 
-    await store.update('orders', order.id, Object.assign({}, order, {
+    const failResult = await saveOrder(Object.assign({}, order, {
       status: STATUS.pendiente,
       failReason: reason,
       events: (order.events || []).concat([{
@@ -520,6 +655,7 @@
       }])
     }));
 
+    if (failResult === 'queued') { ui.toast('Sin señal: el reporte quedó guardado y se enviará al volver la conexión', 'warn'); return; }
     await reload();
     ui.toast('Registrado: pedido devuelto a pendientes', 'warn');
   }
