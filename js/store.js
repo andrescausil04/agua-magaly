@@ -831,7 +831,9 @@ window.MagalyStore = (function () {
   async function signOut() {
     await ready();
     if (!cloudActive) return;
-    try { await sb.auth.signOut(); } catch (err) { /* ignora */ }
+    // 'local': cerrar sesión aquí no debe cerrar la sesión en otros equipos
+    // (con el valor por defecto, 'global', se caían las demás sesiones abiertas).
+    try { await sb.auth.signOut({ scope: 'local' }); } catch (err) { /* ignora */ }
   }
 
   async function profile() {

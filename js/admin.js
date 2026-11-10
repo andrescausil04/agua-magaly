@@ -1860,6 +1860,14 @@
       return;
     }
 
+    if (!status.ok && /sesi[oó]n/i.test(status.error || '')) {
+      box.innerHTML = '<p class="hint">Tu sesión se cerró en el servidor (por ejemplo, al salir desde otro equipo). ' +
+        'Vuelve a entrar para administrar la seguridad.</p>' +
+        '<button type="button" class="btn btn-primary btn-sm" id="twofa-relogin">Volver a entrar</button>';
+      document.getElementById('twofa-relogin').addEventListener('click', () => window.MagalyAuth.logout());
+      return;
+    }
+
     if (!status.ok) {
       box.innerHTML = '<p class="hint">No se pudo consultar el estado de seguridad. ' +
         'Recarga la página e inténtalo de nuevo.</p>';
