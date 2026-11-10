@@ -2409,3 +2409,35 @@ div[id="productos"] {
 
 .track-card .track-result { padding: 18px 0 0; }
 .track-card .my-orders { padding: 16px 0 0; }
+
+/* --------------------------------------------------------------------------
+   Ojito para ver la contraseña (lo agrega js/auth.js)
+   -------------------------------------------------------------------------- */
+.pass-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.pass-wrap input.pass-input[data-eye] {
+  width: 100%;
+  padding-right: 48px;
+}
+.pass-eye {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #5B7383;
+  cursor: pointer;
+}
+.pass-eye:hover { color: var(--blue-deep, #0B4F73); background: rgba(11, 79, 115, 0.08); }
+.pass-eye:focus-visible { outline: 2px solid var(--blue-mid, #1C7FA8); outline-offset: 1px; }

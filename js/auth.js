@@ -724,3 +724,69 @@ window.MagalyAuth = (function () {
     readSession
   };
 })();
+
+/**
+ * OJITO PARA VER LA CONTRASEÑA
+ * Agrega un botón a cada campo de contraseña (también a los que se crean
+ * después en formularios y ventanas) para mostrar u ocultar lo escrito.
+ */
+(function () {
+  'use strict';
+
+  const EYE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const EYE_OFF = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>';
+
+  function paint(btn, visible) {
+    btn.innerHTML = visible ? EYE_OFF : EYE;
+    btn.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    btn.setAttribute('title', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    btn.setAttribute('aria-pressed', String(visible));
+  }
+
+  function enhance(input) {
+    if (input.dataset.eye || !input.parentNode) return;
+    input.dataset.eye = '1';
+    input.classList.add('pass-input');
+
+    const wrap = document.createElement('span');
+    wrap.className = 'pass-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pass-eye';
+    paint(btn, false);
+    btn.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      paint(btn, show);
+      input.focus();
+    });
+    wrap.appendChild(btn);
+
+    // Al enviar el formulario, la contraseña vuelve a quedar oculta.
+    if (input.form) {
+      input.form.addEventListener('submit', () => {
+        input.type = 'password';
+        paint(btn, false);
+      });
+    }
+  }
+
+  function scan(root) {
+    if (!root || !root.querySelectorAll) return;
+    if (root.matches && root.matches('input[type="password"]')) enhance(root);
+    root.querySelectorAll('input[type="password"]').forEach(enhance);
+  }
+
+  function start() {
+    scan(document);
+    new MutationObserver(list => {
+      list.forEach(m => m.addedNodes.forEach(scan));
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
